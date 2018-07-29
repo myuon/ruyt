@@ -6,15 +6,15 @@ use std::io::{BufWriter, Write};
 mod vector;
 use vector::*;
 
-pub struct Ray {
-    origin: V3,
-    direction: V3,
-}
+mod materials;
+use materials::*;
 
-impl Ray {
-    pub fn extend_at(&self, scaler: f32) -> V3 {
-        self.origin + self.direction.scale(scaler)
-    }
+mod figures;
+use figures::*;
+
+pub struct Objects {
+    figure: Figures,
+    material: Materials,
 }
 
 struct Color(u8,u8,u8);
@@ -71,65 +71,39 @@ impl Renderer {
     }
 }
 
-pub struct HitRecord {
-    at: f32,
-    point: V3,
-    normal: V3,
-}
-
-pub trait Object {
-    fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord>;
-}
-
-struct Sphere {
-    center: V3,
-    radius: f32,
-}
-
-impl Object for Sphere {
-    fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
-        let oc = ray.origin - self.center;
-        let a = ray.direction.square_norm();
-        let b = oc.dot(ray.direction);
-        let c = oc.square_norm() - self.radius * self.radius;
-        let discriminant = b*b - a*c;
-
-        if discriminant > 0.0 {
-            let check = |at| {
-                if tmin < at && at < tmax {
-                    let point = ray.extend_at(at);
-
-                    Some(HitRecord {
-                        at: at,
-                        point: point,
-                        normal: (point - self.center).scale(1.0 / self.radius)
-                    })
-                } else {
-                    None
-                }
-            };
-
-            check((-b - (b*b-a*c).sqrt()) / a).or(check((-b + (b*b-a*c).sqrt()) / a))
-        } else {
-            None
-        }
-    }
-}
-
 struct Scene {
-    objects: Vec<Box<dyn Object>>
+    objects: Vec<Objects>,
 }
 
 impl Scene {
-    pub fn color(&self, ray: Ray) -> V3 {
+    pub fn color(&self, ray: Ray, depth: i32) -> V3 {
+        let mut closest_object = None;
+        let mut closest_record: Option<HitRecord> = None;
+
         for object in &self.objects {
-            if let Some(rec) = object.hit(&ray, 0.0, std::f32::MAX) {
-                return (rec.normal + V3(1.0, 1.0, 1.0)).scale(0.5);
+            if let Some(rec) = object.figure.hit(&ray, 0.001, std::f32::MAX) {
+                if closest_record.clone().map_or(true, |c_rec| rec.at < c_rec.at) {
+                    closest_record = Some(rec);
+                    closest_object = Some(object);
+                }
             }
         }
 
-        let t = 0.5 * (ray.direction.normalize().y() + 1.0);
-        V3(1.0, 1.0, 1.0).scale(1.0 - t) + V3(0.5, 0.7, 1.0).scale(t)
+        match (closest_record, closest_object) {
+            (Some(rec), Some(object)) => {
+                let sc = object.material.scatter(&ray, &rec);
+                if depth < 50 && sc.is_scattered {
+                    sc.attenuation * self.color(sc.scattered, depth + 1)
+                } else {
+                    V3(0.0, 0.0, 0.0)
+                }
+            },
+            (None, None) => {
+                let t = 0.5 * (ray.direction.normalize().y() + 1.0);
+                V3(1.0, 1.0, 1.0).scale(1.0 - t) + V3(0.5, 0.7, 1.0).scale(t)
+            },
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -159,21 +133,29 @@ impl Camera {
 }
 
 fn main() {
-    let w = 200;
-    let h = 100;
+    let w = 400;
+    let h = 200;
     let ns = 100;
 
     let camera = Camera::new();
     let scene = Scene {
         objects: vec![
-            Box::new(Sphere {
-                center: V3(0.0, 0.0, -1.0),
-                radius: 0.5,
-            }),
-            Box::new(Sphere {
-                center: V3(0.0, -100.5, -1.0),
-                radius: 100.0,
-            }),
+            Objects {
+                figure: Figures::sphere(V3(0.0, 0.0, -1.0), 0.5),
+                material: Materials::lambertian(V3(0.8, 0.3, 0.3)),
+            },
+            Objects {
+                figure: Figures::sphere(V3(0.0, -100.5, -1.0), 100.0),
+                material: Materials::lambertian(V3(0.8, 0.8, 0.0)),
+            },
+            Objects {
+                figure: Figures::sphere(V3(1.0, 0.0, -1.0), 0.5),
+                material: Materials::metal(V3(0.8, 0.6, 0.2), 1.0),
+            },
+            Objects {
+                figure: Figures::sphere(V3(-1.0, 0.0, -1.0), 0.5),
+                material: Materials::metal(V3(0.8, 0.8, 0.8), 0.3),
+            },
         ]
     };
 
@@ -184,8 +166,8 @@ fn main() {
                 let v = ((h - 1 - j) as f32 + rand::random::<f32>()) / h as f32;
                 let ray = camera.get_ray(u,v);
 
-                scene.color(ray)
-            }).sum::<V3>().scale(1.0 / ns as f32);
+                scene.color(ray, 0)
+            }).sum::<V3>().scale(1.0 / ns as f32).map(&|x| x.sqrt());
 
             Color::from_v3(c)
         }),

@@ -1,3 +1,5 @@
+extern crate rand;
+
 use std::ops::*;
 use std::iter::Sum;
 
@@ -5,8 +7,13 @@ use std::iter::Sum;
 pub struct V3(pub f32, pub f32, pub f32);
 
 impl V3 {
-    pub fn new(x: f32, y: f32, z: f32) -> V3 {
-        V3(x,y,z)
+    pub fn new_in_unit_sphere() -> V3 {
+        loop {
+            let p = V3(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()).scale(2.0) - V3(1.0, 1.0, 1.0);
+            if p.square_norm() >= 1.0 {
+                return p;
+            }
+        }
     }
 
     pub fn dot(self, other: V3) -> f32 {
@@ -40,6 +47,10 @@ impl V3 {
     pub fn z(&self) -> f32 {
         self.2
     }
+
+    pub fn map(self, f: &Fn(f32) -> f32) -> V3 {
+        V3(f(self.0), f(self.1), f(self.2))
+    }
 }
 
 impl Add<V3> for V3 {
@@ -55,6 +66,14 @@ impl Sub<V3> for V3 {
 
     fn sub(self, other: V3) -> V3 {
         V3(self.0 - other.0, self.1 - other.1, self.2 - other.2)
+    }
+}
+
+impl Mul<V3> for V3 {
+    type Output = V3;
+
+    fn mul(self, other: V3) -> V3 {
+        V3(self.0 * other.0, self.1 * other.1, self.2 * other.2)
     }
 }
 
@@ -93,4 +112,17 @@ impl V3U {
         self.0.z()
     }
 }
+
+#[derive(Clone)]
+pub struct Ray {
+    pub origin: V3,
+    pub direction: V3,
+}
+
+impl Ray {
+    pub fn extend_at(&self, scaler: f32) -> V3 {
+        self.origin + self.direction.scale(scaler)
+    }
+}
+
 
