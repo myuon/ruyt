@@ -140,7 +140,7 @@ fn main() {
         objects: vec![
             Objects {
                 figure: Figures::sphere(V3(0.0, 0.0, -1.0), 0.5),
-                material: Materials::lambertian(V3(0.8, 0.3, 0.3)),
+                material: Materials::lambertian(V3(0.1, 0.2, 0.5)),
             },
             Objects {
                 figure: Figures::sphere(V3(0.0, -100.5, -1.0), 100.0),
@@ -148,10 +148,14 @@ fn main() {
             },
             Objects {
                 figure: Figures::sphere(V3(1.0, 0.0, -1.0), 0.5),
-                material: Materials::metal(V3(0.8, 0.6, 0.2), 1.0),
+                material: Materials::metal(V3(0.8, 0.6, 0.2), 0.3),
             },
             Objects {
                 figure: Figures::sphere(V3(-1.0, 0.0, -1.0), 0.5),
+                material: Materials::dielectric(1.5),
+            },
+            Objects {
+                figure: Figures::sphere(V3(-1.0, 0.0, -1.0), -0.45),
                 material: Materials::dielectric(1.5),
             },
         ]

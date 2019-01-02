@@ -84,29 +84,38 @@ impl Dielectric {
             None
         }
     }
+
+    fn schlick(&self, cosine: f32) -> f32 {
+        let r0 = (1.0 - self.ref_idx) / (1.0 + self.ref_idx);
+        r0 * r0 + (1.0 - r0 * r0) * (1.0 - cosine).powi(5)
+    }
 }
 
 impl Material for Dielectric {
     fn scatter(&self, ray_in: &Ray, rec: &HitRecord) -> ScatterRecord {
         let reflected = Dielectric::reflect(&ray_in.direction, &rec.normal);
-        let (outward_normal, ni_over_nt) =
+        let (outward_normal, ni_over_nt, cosine) =
             if ray_in.direction.dot(rec.normal) > 0.0 {
-                (-rec.normal, self.ref_idx)
+                let cosine = self.ref_idx * ray_in.direction.dot(rec.normal) / ray_in.direction.norm();
+                (-rec.normal, self.ref_idx, cosine)
             } else {
-                (rec.normal, 1.0 / self.ref_idx)
+                let cosine = - ray_in.direction.dot(rec.normal) / ray_in.direction.norm();
+                (rec.normal, 1.0 / self.ref_idx, cosine)
             };
 
         if let Some(refracted) = Dielectric::refract(&ray_in.direction, outward_normal, ni_over_nt) {
+            let reflect_prob = self.schlick(cosine);
+
             ScatterRecord {
                 attenuation: V3(1.0, 1.0, 0.0),
-                scattered: Ray { origin: rec.point, direction: refracted },
+                scattered: Ray { origin: rec.point, direction: if rand::random::<f32>() < reflect_prob { reflected } else { refracted } },
                 is_scattered: true,
             }
         } else {
             ScatterRecord {
                 attenuation: V3(1.0, 1.0, 0.0),
                 scattered: Ray { origin: rec.point, direction: reflected },
-                is_scattered: false,
+                is_scattered: true,
             }
         }
     }
