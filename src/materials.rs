@@ -1,4 +1,4 @@
-use vector::*;
+use crate::vector::*;
 
 #[derive(Clone)]
 pub struct HitRecord {

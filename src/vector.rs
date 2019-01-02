@@ -1,5 +1,3 @@
-extern crate rand;
-
 use std::ops::*;
 use std::iter::Sum;
 

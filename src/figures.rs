@@ -1,5 +1,5 @@
-use vector::*;
-use materials::*;
+use crate::vector::*;
+use crate::materials::*;
 
 trait Hit {
     fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord>;

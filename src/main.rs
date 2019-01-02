@@ -1,16 +1,14 @@
-extern crate rand;
-
 use std::fs;
 use std::io::{BufWriter, Write};
 
 mod vector;
-use vector::*;
-
-mod materials;
-use materials::*;
+use crate::vector::*;
 
 mod figures;
-use figures::*;
+use crate::figures::*;
+
+mod materials;
+use crate::materials::*;
 
 pub struct Objects {
     figure: Figures,
