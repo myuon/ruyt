@@ -67,6 +67,14 @@ impl Sub<V3> for V3 {
     }
 }
 
+impl Neg for V3 {
+    type Output = V3;
+
+    fn neg(self) -> V3 {
+        V3(0.0, 0.0, 0.0) - self
+    }
+}
+
 impl Mul<V3> for V3 {
     type Output = V3;
 

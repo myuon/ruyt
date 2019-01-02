@@ -64,9 +64,58 @@ impl Material for Metal {
     }
 }
 
+pub struct Dielectric {
+    ref_idx: f32,
+}
+
+impl Dielectric {
+    fn reflect(v: &V3, n: &V3) -> V3 {
+        *v - n.scale(2.0 * v.dot(*n))
+    }
+
+    fn refract(v: &V3, n: V3, ni_over_nt: f32) -> Option<V3> {
+        let uv = v.normalize();
+        let dt = uv.dot(n);
+        let discriminant = 1.0 - ni_over_nt * ni_over_nt * (1.0 - dt * dt);
+
+        if discriminant > 0.0 {
+            Some((uv - n.scale(dt)).scale(ni_over_nt) - n.scale(discriminant.sqrt()))
+        } else {
+            None
+        }
+    }
+}
+
+impl Material for Dielectric {
+    fn scatter(&self, ray_in: &Ray, rec: &HitRecord) -> ScatterRecord {
+        let reflected = Dielectric::reflect(&ray_in.direction, &rec.normal);
+        let (outward_normal, ni_over_nt) =
+            if ray_in.direction.dot(rec.normal) > 0.0 {
+                (-rec.normal, self.ref_idx)
+            } else {
+                (rec.normal, 1.0 / self.ref_idx)
+            };
+
+        if let Some(refracted) = Dielectric::refract(&ray_in.direction, outward_normal, ni_over_nt) {
+            ScatterRecord {
+                attenuation: V3(1.0, 1.0, 0.0),
+                scattered: Ray { origin: rec.point, direction: refracted },
+                is_scattered: true,
+            }
+        } else {
+            ScatterRecord {
+                attenuation: V3(1.0, 1.0, 0.0),
+                scattered: Ray { origin: rec.point, direction: reflected },
+                is_scattered: false,
+            }
+        }
+    }
+}
+
 pub enum Materials {
     Lambertian(Lambertian),
     Metal(Metal),
+    Dielectric(Dielectric),
 }
 
 impl Materials {
@@ -83,10 +132,17 @@ impl Materials {
         })
     }
 
+    pub fn dielectric(ref_idx: f32) -> Materials {
+        Materials::Dielectric(Dielectric {
+            ref_idx: ref_idx
+        })
+    }
+
     pub fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> ScatterRecord {
         match self {
             Materials::Lambertian(m) => m.scatter(ray_in, hit_record),
             Materials::Metal(m) => m.scatter(ray_in, hit_record),
+            Materials::Dielectric(m) => m.scatter(ray_in, hit_record),
         }
     }
 }

@@ -152,7 +152,7 @@ fn main() {
             },
             Objects {
                 figure: Figures::sphere(V3(-1.0, 0.0, -1.0), 0.5),
-                material: Materials::metal(V3(0.8, 0.8, 0.8), 0.3),
+                material: Materials::dielectric(1.5),
             },
         ]
     };
