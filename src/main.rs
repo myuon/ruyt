@@ -231,26 +231,20 @@ fn main() {
 
     let lookfrom = V3(13.0, 2.0, 3.0);
     let lookat = V3(0.0, 0.0, 0.0);
-    let dist_to_focus = (lookfrom - lookat).norm();
-    let apertune = 0.1;
+    let dist_to_focus = 10.0;
+    let apertune = 0.0;
 
     let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), 20.0, w as f32 / h as f32, apertune, dist_to_focus);
 //    let scene = create_random_scene();
     let scene = Scene {
         objects: vec![
             Objects {
-                figure: Figures::sphere(V3(0.0, -10.0, 0.0), 10.0),
-                material: Materials::lambertian(Textures::checker(
-                    Textures::solid(V3(0.2, 0.3, 0.1)),
-                    Textures::solid(V3(0.9, 0.9, 0.9))
-                )),
+                figure: Figures::sphere(V3(0.0, -1000.0, 0.0), 1000.0),
+                material: Materials::lambertian(Textures::noise()),
             },
             Objects {
-                figure: Figures::sphere(V3(0.0, 10.0, 0.0), 10.0),
-                material: Materials::lambertian(Textures::checker(
-                    Textures::solid(V3(0.2, 0.3, 0.1)),
-                    Textures::solid(V3(0.9, 0.9, 0.9))
-                )),
+                figure: Figures::sphere(V3(0.0, 2.0, 0.0), 2.0),
+                material: Materials::lambertian(Textures::noise()),
             },
         ]
     };
