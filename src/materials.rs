@@ -107,13 +107,13 @@ impl Material for Dielectric {
             let reflect_prob = self.schlick(cosine);
 
             ScatterRecord {
-                attenuation: V3(1.0, 1.0, 0.0),
+                attenuation: V3(1.0, 1.0, 1.0),
                 scattered: Ray { origin: rec.point, direction: if rand::random::<f32>() < reflect_prob { reflected } else { refracted } },
                 is_scattered: true,
             }
         } else {
             ScatterRecord {
-                attenuation: V3(1.0, 1.0, 0.0),
+                attenuation: V3(1.0, 1.0, 1.0),
                 scattered: Ray { origin: rec.point, direction: reflected },
                 is_scattered: true,
             }
