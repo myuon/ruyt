@@ -151,7 +151,7 @@ fn create_random_scene() -> Scene {
     objects.push(
         Objects {
             figure: Figures::sphere(V3(0.0, -1000.0, 0.0), 1000.0),
-            material: Materials::lambertian(V3(0.5, 0.5, 0.5)),
+            material: Materials::lambertian(Textures::solid(V3(0.5, 0.5, 0.5))),
         }
     );
 
@@ -169,11 +169,11 @@ fn create_random_scene() -> Scene {
                     objects.push(
                         Objects {
                             figure: Figures::sphere(center, 0.2),
-                            material: Materials::lambertian(V3(
+                            material: Materials::lambertian(Textures::solid(V3(
                                 rand::random::<f32>() * rand::random::<f32>(),
                                 rand::random::<f32>() * rand::random::<f32>(),
                                 rand::random::<f32>() * rand::random::<f32>(),
-                            ))
+                            )))
                         }
                     );
                 } else if material < 0.95 {
@@ -209,7 +209,7 @@ fn create_random_scene() -> Scene {
     objects.push(
         Objects {
             figure: Figures::sphere(V3(-4.0, 1.0, 0.0), 1.0),
-            material: Materials::lambertian(V3(0.4, 0.2, 0.1)),
+            material: Materials::lambertian(Textures::solid(V3(0.4, 0.2, 0.1))),
         }
     );
     objects.push(
@@ -235,34 +235,25 @@ fn main() {
     let apertune = 0.1;
 
     let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), 20.0, w as f32 / h as f32, apertune, dist_to_focus);
-    let scene = create_random_scene();
-
-    /*
+//    let scene = create_random_scene();
     let scene = Scene {
         objects: vec![
             Objects {
-                figure: Figures::sphere(V3(0.0, 0.0, -1.0), 0.5),
-                material: Materials::lambertian(V3(0.1, 0.2, 0.5)),
+                figure: Figures::sphere(V3(0.0, -10.0, 0.0), 10.0),
+                material: Materials::lambertian(Textures::checker(
+                    Textures::solid(V3(0.2, 0.3, 0.1)),
+                    Textures::solid(V3(0.9, 0.9, 0.9))
+                )),
             },
             Objects {
-                figure: Figures::sphere(V3(0.0, -100.5, -1.0), 100.0),
-                material: Materials::lambertian(V3(0.8, 0.8, 0.0)),
-            },
-            Objects {
-                figure: Figures::sphere(V3(1.0, 0.0, -1.0), 0.5),
-                material: Materials::metal(V3(0.8, 0.6, 0.2), 0.3),
-            },
-            Objects {
-                figure: Figures::sphere(V3(-1.0, 0.0, -1.0), 0.5),
-                material: Materials::dielectric(1.5),
-            },
-            Objects {
-                figure: Figures::sphere(V3(-1.0, 0.0, -1.0), -0.45),
-                material: Materials::dielectric(1.5),
+                figure: Figures::sphere(V3(0.0, 10.0, 0.0), 10.0),
+                material: Materials::lambertian(Textures::checker(
+                    Textures::solid(V3(0.2, 0.3, 0.1)),
+                    Textures::solid(V3(0.9, 0.9, 0.9))
+                )),
             },
         ]
     };
-    */
 
     let renderer = Renderer {
         renderer: Box::new(move |i,j| {

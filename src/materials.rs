@@ -18,15 +18,86 @@ pub struct ScatterRecord {
     pub is_scattered: bool,
 }
 
+pub trait Rendering {
+    fn value(&self, u: f32, v: f32, point: &V3) -> V3;
+}
+
+struct SolidTexture {
+    color: V3,
+}
+
+impl SolidTexture {
+    fn new(color: V3) -> SolidTexture {
+        SolidTexture {
+            color: color
+        }
+    }
+}
+
+impl Rendering for SolidTexture {
+    fn value(&self, u: f32, v: f32, point: &V3) -> V3 {
+        self.color
+    }
+}
+
+struct CheckerTexture {
+    odd: Box<Textures>,
+    even: Box<Textures>,
+}
+
+impl CheckerTexture {
+    fn new(odd: Textures, even: Textures) -> CheckerTexture {
+        CheckerTexture {
+            odd: Box::new(odd),
+            even: Box::new(even),
+        }
+    }
+}
+
+impl Rendering for CheckerTexture {
+    fn value(&self, u: f32, v: f32, point: &V3) -> V3 {
+        let sines = (10.0 * point.x()).sin() * (10.0 * point.y()).sin() * (10.0 * point.z()).sin();
+        if sines < 0.0 {
+            self.odd.value(u, v, point)
+        } else {
+            self.even.value(u, v, point)
+        }
+    }
+}
+
+pub enum Textures {
+    Solid(SolidTexture),
+    Checker(CheckerTexture),
+}
+
+impl Textures {
+    pub fn solid(color: V3) -> Textures {
+        Textures::Solid(SolidTexture::new(color))
+    }
+
+    pub fn checker(even: Textures, odd: Textures) -> Textures {
+        Textures::Checker(CheckerTexture::new(odd, even))
+    }
+}
+
+impl Rendering for Textures {
+    fn value(&self, u: f32, v: f32, point: &V3) -> V3 {
+        match self {
+            Textures::Solid(t) => t.value(u, v, point),
+            Textures::Checker(t) => t.value(u, v, point),
+        }
+    }
+}
+
 pub struct Lambertian {
-    albedo: V3,
+    albedo: Textures,
 }
 
 impl Material for Lambertian {
     fn scatter(&self, _ray_in: &Ray, rec: &HitRecord) -> ScatterRecord {
         let target = rec.point + rec.normal + V3::new_in_unit_sphere();
         ScatterRecord {
-            attenuation: self.albedo,
+            attenuation: self.albedo.value(0.0, 0.0, &rec.point),
             scattered: Ray {
                 origin: rec.point,
                 direction: target - rec.point,
@@ -128,7 +199,7 @@ pub enum Materials {
 }
 
 impl Materials {
-    pub fn lambertian(albedo: V3) -> Materials {
+    pub fn lambertian(albedo: Textures) -> Materials {
         Materials::Lambertian(Lambertian {
             albedo: albedo,
         })
