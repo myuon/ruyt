@@ -114,12 +114,16 @@ struct Camera {
 }
 
 impl Camera {
-    pub fn new() -> Camera {
+    pub fn new(vfov: f32, aspect: f32) -> Camera {
+        let theta = vfov * std::f32::consts::PI / 180.0;
+        let half_height = (theta / 2.0).tan();
+        let half_width = aspect * half_height;
+
         Camera {
             origin: V3(0.0, 0.0, 0.0),
-            lower_left_corner: V3(-2.0, -1.0, -1.0),
-            horizontal: V3(4.0, 0.0, 0.0),
-            vertical: V3(0.0, 2.0, 0.0),
+            lower_left_corner: V3(-half_width, -half_height, -1.0),
+            horizontal: V3(2.0 * half_width, 0.0, 0.0),
+            vertical: V3(0.0, 2.0 * half_height, 0.0),
         }
     }
 
@@ -136,7 +140,7 @@ fn main() {
     let h = 200;
     let ns = 100;
 
-    let camera = Camera::new();
+    let camera = Camera::new(90.0, 2.0);
     let scene = Scene {
         objects: vec![
             Objects {
