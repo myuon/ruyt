@@ -114,23 +114,26 @@ struct Camera {
 }
 
 impl Camera {
-    pub fn new(vfov: f32, aspect: f32) -> Camera {
+    pub fn new(lookfrom: V3, lookat: V3, vup: V3, vfov: f32, aspect: f32) -> Camera {
         let theta = vfov * std::f32::consts::PI / 180.0;
         let half_height = (theta / 2.0).tan();
         let half_width = aspect * half_height;
+        let w = (lookfrom - lookat).normalize();
+        let u = vup.cross(w).normalize();
+        let v = w.cross(u);
 
         Camera {
-            origin: V3(0.0, 0.0, 0.0),
-            lower_left_corner: V3(-half_width, -half_height, -1.0),
-            horizontal: V3(2.0 * half_width, 0.0, 0.0),
-            vertical: V3(0.0, 2.0 * half_height, 0.0),
+            origin: lookfrom,
+            lower_left_corner: lookfrom - u.scale(half_width) - v.scale(half_height) - w,
+            horizontal: u.scale(2.0 * half_width),
+            vertical: v.scale(2.0 * half_height),
         }
     }
 
     pub fn get_ray(&self, u: f32, v: f32) -> Ray {
         Ray {
             origin: self.origin,
-            direction: self.lower_left_corner + self.horizontal.scale(u) + self.vertical.scale(v)
+            direction: self.lower_left_corner + self.horizontal.scale(u) + self.vertical.scale(v) - self.origin
         }
     }
 }
@@ -140,7 +143,7 @@ fn main() {
     let h = 200;
     let ns = 100;
 
-    let camera = Camera::new(90.0, 2.0);
+    let camera = Camera::new(V3(-2.0, 2.0, 1.0), V3(0.0, 0.0, -1.0), V3(0.0, 1.0, 0.0), 30.0, 2.0);
     let scene = Scene {
         objects: vec![
             Objects {
