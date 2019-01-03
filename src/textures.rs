@@ -126,19 +126,21 @@ impl Perlin {
 
 struct NoiseTexture {
     noise: Perlin,
+    scaler: f32,
 }
 
 impl NoiseTexture {
-    fn new() -> NoiseTexture {
+    fn new(scaler: f32) -> NoiseTexture {
         NoiseTexture {
-            noise: Perlin::new()
+            noise: Perlin::new(),
+            scaler: scaler,
         }
     }
 }
 
 impl Rendering for NoiseTexture {
     fn value(&self, _u: f32, _v: f32, point: &V3) -> V3 {
-        V3(1.0, 1.0, 1.0).scale(self.noise.noise(point))
+        V3(1.0, 1.0, 1.0).scale(self.noise.noise(&point.scale(self.scaler)))
     }
 }
 
@@ -157,8 +159,8 @@ impl Textures {
         Textures::Checker(CheckerTexture::new(odd, even))
     }
 
-    pub fn noise() -> Textures {
-        Textures::Noise(NoiseTexture::new())
+    pub fn noise(scaler: f32) -> Textures {
+        Textures::Noise(NoiseTexture::new(scaler))
     }
 }
 

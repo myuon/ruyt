@@ -243,11 +243,11 @@ fn main() {
         objects: vec![
             Objects {
                 figure: Figures::sphere(V3(0.0, -1000.0, 0.0), 1000.0),
-                material: Materials::lambertian(Textures::noise()),
+                material: Materials::lambertian(Textures::noise(5.0)),
             },
             Objects {
                 figure: Figures::sphere(V3(0.0, 2.0, 0.0), 2.0),
-                material: Materials::lambertian(Textures::noise()),
+                material: Materials::lambertian(Textures::noise(5.0)),
             },
         ]
     };
