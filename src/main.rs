@@ -111,10 +111,13 @@ struct Camera {
     lower_left_corner: V3,
     horizontal: V3,
     vertical: V3,
+    lens_radius: f32,
+    camera_pose: (V3, V3, V3),
 }
 
 impl Camera {
-    pub fn new(lookfrom: V3, lookat: V3, vup: V3, vfov: f32, aspect: f32) -> Camera {
+    pub fn new(lookfrom: V3, lookat: V3, vup: V3, vfov: f32, aspect: f32, apertune: f32, focus_dist: f32) -> Camera {
+        let lens_radius = apertune / 2.0;
         let theta = vfov * std::f32::consts::PI / 180.0;
         let half_height = (theta / 2.0).tan();
         let half_width = aspect * half_height;
@@ -124,16 +127,21 @@ impl Camera {
 
         Camera {
             origin: lookfrom,
-            lower_left_corner: lookfrom - u.scale(half_width) - v.scale(half_height) - w,
-            horizontal: u.scale(2.0 * half_width),
-            vertical: v.scale(2.0 * half_height),
+            lower_left_corner: lookfrom - u.scale(half_width * focus_dist) - v.scale(half_height * focus_dist) - w.scale(focus_dist),
+            horizontal: u.scale(2.0 * half_width * focus_dist),
+            vertical: v.scale(2.0 * half_height * focus_dist),
+            lens_radius: lens_radius,
+            camera_pose: (u,v,w),
         }
     }
 
     pub fn get_ray(&self, u: f32, v: f32) -> Ray {
+        let rd = V3::new_in_unit_disk().scale(self.lens_radius);
+        let offset = self.camera_pose.0.scale(rd.x()) + self.camera_pose.1.scale(rd.y());
+
         Ray {
-            origin: self.origin,
-            direction: self.lower_left_corner + self.horizontal.scale(u) + self.vertical.scale(v) - self.origin
+            origin: self.origin + offset,
+            direction: self.lower_left_corner + self.horizontal.scale(u) + self.vertical.scale(v) - self.origin - offset
         }
     }
 }
@@ -143,7 +151,12 @@ fn main() {
     let h = 200;
     let ns = 100;
 
-    let camera = Camera::new(V3(-2.0, 2.0, 1.0), V3(0.0, 0.0, -1.0), V3(0.0, 1.0, 0.0), 30.0, 2.0);
+    let lookfrom = V3(3.0, 3.0, 2.0);
+    let lookat = V3(0.0, 0.0, -1.0);
+    let dist_to_focus = (lookfrom - lookat).norm();
+    let apertune = 2.0;
+
+    let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), 20.0, w as f32 / h as f32, apertune, dist_to_focus);
     let scene = Scene {
         objects: vec![
             Objects {

@@ -14,6 +14,15 @@ impl V3 {
         }
     }
 
+    pub fn new_in_unit_disk() -> V3 {
+        loop {
+            let p = V3(rand::random::<f32>(), rand::random::<f32>(), 0.0).scale(2.0) - V3(1.0, 1.0, 0.0);
+            if p.square_norm() < 1.0 {
+                return p;
+            }
+        }
+    }
+
     pub fn dot(self, other: V3) -> f32 {
         self.0 * other.0 + self.1 * other.1 + self.2 * other.2
     }
