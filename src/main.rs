@@ -146,17 +146,98 @@ impl Camera {
     }
 }
 
+fn create_random_scene() -> Scene {
+    let mut objects = vec![];
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(0.0, -1000.0, 0.0), 1000.0),
+            material: Materials::lambertian(V3(0.5, 0.5, 0.5)),
+        }
+    );
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let material = rand::random::<f32>();
+            let center = V3(
+                a as f32 + 0.9 * rand::random::<f32>(),
+                0.2,
+                b as f32 + 0.9 * rand::random::<f32>(),
+            );
+
+            if (center - V3(4.0, 0.2, 0.0)).norm() > 0.9 {
+                if material < 0.8 {
+                    objects.push(
+                        Objects {
+                            figure: Figures::sphere(center, 0.2),
+                            material: Materials::lambertian(V3(
+                                rand::random::<f32>() * rand::random::<f32>(),
+                                rand::random::<f32>() * rand::random::<f32>(),
+                                rand::random::<f32>() * rand::random::<f32>(),
+                            ))
+                        }
+                    );
+                } else if material < 0.95 {
+                    objects.push(
+                        Objects {
+                            figure: Figures::sphere(center, 0.2),
+                            material: Materials::metal(V3(
+                                0.5 * (1.0 + rand::random::<f32>()),
+                                0.5 * (1.0 + rand::random::<f32>()),
+                                0.5 * (1.0 + rand::random::<f32>()),
+                            )
+                            , 0.5 * rand::random::<f32>())
+                        }
+                    );
+                } else {
+                    objects.push(
+                        Objects {
+                            figure: Figures::sphere(center, 0.2),
+                            material: Materials::dielectric(1.5),
+                        }
+                    );
+                }
+            }
+        }
+    }
+
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(0.0, 1.0, 0.0), 1.0),
+            material: Materials::dielectric(1.5),
+        }
+    );
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(-4.0, 1.0, 0.0), 1.0),
+            material: Materials::lambertian(V3(0.4, 0.2, 0.1)),
+        }
+    );
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(4.0, 1.0, 0.0), 1.0),
+            material: Materials::metal(V3(0.7, 0.6, 0.5), 0.0),
+        }
+    );
+
+    Scene {
+        objects: objects,
+    }
+}
+
 fn main() {
     let w = 400;
-    let h = 200;
+    let h = 250;
     let ns = 100;
 
-    let lookfrom = V3(3.0, 3.0, 2.0);
-    let lookat = V3(0.0, 0.0, -1.0);
+    let lookfrom = V3(13.0, 2.0, 3.0);
+    let lookat = V3(0.0, 0.0, 0.0);
     let dist_to_focus = (lookfrom - lookat).norm();
-    let apertune = 2.0;
+    let apertune = 0.1;
 
     let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), 20.0, w as f32 / h as f32, apertune, dist_to_focus);
+    let scene = create_random_scene();
+
+    /*
     let scene = Scene {
         objects: vec![
             Objects {
@@ -181,6 +262,7 @@ fn main() {
             },
         ]
     };
+    */
 
     let renderer = Renderer {
         renderer: Box::new(move |i,j| {
