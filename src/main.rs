@@ -74,21 +74,23 @@ struct Scene {
 }
 
 impl Scene {
-    pub fn color(&self, ray: Ray, depth: i32) -> V3 {
-        let mut closest_object = None;
-        let mut closest_record: Option<HitRecord> = None;
+    pub fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<(HitRecord, &Objects)> {
+        let mut closest_parameter = t_max;
+        let mut record = None;
 
         for object in &self.objects {
-            if let Some(rec) = object.figure.hit(&ray, 0.001, std::f32::MAX) {
-                if closest_record.clone().map_or(true, |c_rec| rec.at < c_rec.at) {
-                    closest_record = Some(rec);
-                    closest_object = Some(object);
-                }
+            if let Some(rec) = object.figure.hit(ray, t_min, closest_parameter) {
+                closest_parameter = rec.at;
+                record = Some((rec,object));
             }
         }
 
-        match (closest_record, closest_object) {
-            (Some(rec), Some(object)) => {
+        record
+    }
+
+    pub fn color(&self, ray: Ray, depth: i32) -> V3 {
+        match self.hit(&ray, 0.001, std::f32::MAX) {
+            Some((rec, object)) => {
                 let sc = object.material.scatter(&ray, &rec);
                 if depth < 50 && sc.is_scattered {
                     sc.attenuation * self.color(sc.scattered, depth + 1)
@@ -96,11 +98,10 @@ impl Scene {
                     V3(0.0, 0.0, 0.0)
                 }
             },
-            (None, None) => {
+            None => {
                 let t = 0.5 * (ray.direction.normalize().y() + 1.0);
                 V3(1.0, 1.0, 1.0).scale(1.0 - t) + V3(0.5, 0.7, 1.0).scale(t)
             },
-            _ => unreachable!(),
         }
     }
 }
