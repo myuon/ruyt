@@ -7,6 +7,9 @@ use crate::vector::*;
 mod figures;
 use crate::figures::*;
 
+mod textures;
+use crate::textures::*;
+
 mod materials;
 use crate::materials::*;
 
