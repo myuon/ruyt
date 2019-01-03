@@ -48,7 +48,7 @@ impl Rendering for CheckerTexture {
 }
 
 struct Perlin {
-    ranfloat: Vec<f32>,
+    ranvec: Vec<V3>,
     perm_x: Vec<u8>,
     perm_y: Vec<u8>,
     perm_z: Vec<u8>,
@@ -57,15 +57,21 @@ struct Perlin {
 impl Perlin {
     fn new() -> Perlin {
         Perlin {
-            ranfloat: Perlin::perlin_generate(),
+            ranvec: Perlin::perlin_generate(),
             perm_x: Perlin::perlin_generate_perm(),
             perm_y: Perlin::perlin_generate_perm(),
             perm_z: Perlin::perlin_generate_perm(),
         }
     }
 
-    fn perlin_generate() -> Vec<f32> {
-        (0..256).map(|_| rand::random()).collect()
+    fn perlin_generate() -> Vec<V3> {
+        (0..256).map(|_|
+            V3(
+                -1.0 + 2.0 * rand::random::<f32>(),
+                -1.0 + 2.0 * rand::random::<f32>(),
+                -1.0 + 2.0 * rand::random::<f32>(),
+            ).normalize()
+        ).collect()
     }
 
     fn permute(vec: &mut Vec<u8>, n: usize) {
@@ -83,16 +89,21 @@ impl Perlin {
         vec
     }
 
-    fn trilinear_interp(vec: Vec<f32>, u: f32, v: f32, w: f32) -> f32 {
-        let mut accum = 0.0;
+    fn perlin_interp(vec: Vec<V3>, u: f32, v: f32, w: f32) -> f32 {
+        let uu = u * u * (3.0 - 2.0 * u);
+        let vv = v * v * (3.0 - 2.0 * v);
+        let ww = w * w * (3.0 - 2.0 * w);
 
+        let mut accum = 0.0;
         for i in 0..2 {
             for j in 0..2 {
                 for k in 0..2 {
+                    let weight_vec = V3(u - i as f32, v - j as f32, w - k as f32);
                     accum +=
-                        (i as f32 * u + (1.0 - i as f32) * (1.0 - u)) *
-                        (j as f32 * v + (1.0 - j as f32) * (1.0 - v)) *
-                        (k as f32 * w + (1.0 - k as f32) * (1.0 - w)) * vec[i * 4 + j * 2 + k];
+                        (i as f32 * uu + (1.0 - i as f32) * (1.0 - uu)) *
+                        (j as f32 * vv + (1.0 - j as f32) * (1.0 - vv)) *
+                        (k as f32 * ww + (1.0 - k as f32) * (1.0 - ww)) *
+                        vec[4 * i + 2 * j + k].dot(weight_vec);
                 }
             }
         }
@@ -100,14 +111,23 @@ impl Perlin {
         accum
     }
 
-    fn noise(&self, point: &V3) -> f32 {
-        let mut u = point.x() - point.x().floor();
-        let mut v = point.y() - point.y().floor();
-        let mut w = point.z() - point.z().floor();
-        u = u * u * (3.0 - 2.0 * u);
-        v = v * v * (3.0 - 2.0 * v);
-        w = w * w * (3.0 - 2.0 * w);
+    fn turbulence(&self, point: &V3, depth: i32) -> f32 {
+        let mut accum = 0.0;
+        let mut temp_p = *point;
+        let mut weight = 1.0;
 
+        for _ in 0..depth {
+            accum += weight * self.noise(&temp_p);
+            weight *= 0.5;
+            temp_p = temp_p.scale(2.0);
+        }
+        accum.abs()
+    }
+
+    fn noise(&self, point: &V3) -> f32 {
+        let u = point.x() - point.x().floor();
+        let v = point.y() - point.y().floor();
+        let w = point.z() - point.z().floor();
         let i = point.x().floor() as u8;
         let j = point.y().floor() as u8;
         let k = point.z().floor() as u8;
@@ -116,11 +136,11 @@ impl Perlin {
         for di in 0..2 {
             for dj in 0..2 {
                 for dk in 0..2 {
-                    vec.push(self.ranfloat[(self.perm_x[(i + di) as usize] ^ self.perm_y[(j + dj) as usize] ^ self.perm_z[(k + dk) as usize]) as usize]);
+                    vec.push(self.ranvec[(self.perm_x[(i + di) as usize] ^ self.perm_y[(j + dj) as usize] ^ self.perm_z[(k + dk) as usize]) as usize]);
                 }
             }
         }
-        Perlin::trilinear_interp(vec, u, v, w)
+        Perlin::perlin_interp(vec, u, v, w)
     }
 }
 
@@ -140,7 +160,7 @@ impl NoiseTexture {
 
 impl Rendering for NoiseTexture {
     fn value(&self, _u: f32, _v: f32, point: &V3) -> V3 {
-        V3(1.0, 1.0, 1.0).scale(self.noise.noise(&point.scale(self.scaler)))
+        V3(1.0, 1.0, 1.0).scale(0.5 * (1.0 + (self.scaler * point.z() + 10.0 * self.noise.turbulence(point, 7)).sin()))
     }
 }
 
