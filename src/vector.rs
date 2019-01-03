@@ -8,7 +8,7 @@ impl V3 {
     pub fn new_in_unit_sphere() -> V3 {
         loop {
             let p = V3(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()).scale(2.0) - V3(1.0, 1.0, 1.0);
-            if p.square_norm() >= 1.0 {
+            if p.square_norm() < 1.0 {
                 return p;
             }
         }
