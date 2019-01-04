@@ -95,15 +95,15 @@ impl Scene {
         match self.hit(&ray, 0.001, std::f32::MAX) {
             Some((rec, object)) => {
                 let sc = object.material.scatter(&ray, &rec);
+                let emitted = object.material.emitted(rec.u, rec.v, &rec.point);
                 if depth < 50 && sc.is_scattered {
-                    sc.attenuation * self.color(sc.scattered, depth + 1)
+                    emitted + sc.attenuation * self.color(sc.scattered, depth + 1)
                 } else {
-                    V3(0.0, 0.0, 0.0)
+                    emitted
                 }
             },
             None => {
-                let t = 0.5 * (ray.direction.normalize().y() + 1.0);
-                V3(1.0, 1.0, 1.0).scale(1.0 - t) + V3(0.5, 0.7, 1.0).scale(t)
+                V3(0.0, 0.0, 0.0)
             },
         }
     }
@@ -230,14 +230,14 @@ fn create_random_scene() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 100;
+    let ns = 1000;
 
     let lookfrom = V3(13.0, 2.0, 3.0);
-    let lookat = V3(0.0, 0.0, 0.0);
+    let lookat = V3(0.0, 2.0, 0.0);
     let dist_to_focus = 10.0;
     let apertune = 0.0;
 
-    let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), 20.0, w as f32 / h as f32, apertune, dist_to_focus);
+    let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), 30.0, w as f32 / h as f32, apertune, dist_to_focus);
 //    let scene = create_random_scene();
     let scene = Scene {
         objects: vec![
@@ -248,6 +248,14 @@ fn main() {
             Objects {
                 figure: Figures::sphere(V3(0.0, 2.0, 0.0), 2.0),
                 material: Materials::lambertian(Textures::noise(1.0)),
+            },
+            Objects {
+                figure: Figures::sphere(V3(0.0, 7.0, 0.0), 2.0),
+                material: Materials::diffuse_light(Textures::solid(V3(4.0, 4.0, 4.0))),
+            },
+            Objects {
+                figure: Figures::xy_rect(3.0, 5.0, 1.0, 3.0, -2.0),
+                material: Materials::diffuse_light(Textures::solid(V3(4.0, 4.0, 4.0))),
             },
         ]
     };

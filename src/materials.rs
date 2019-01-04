@@ -6,10 +6,15 @@ pub struct HitRecord {
     pub at: f32,
     pub point: V3,
     pub normal: V3,
+    pub u: f32,
+    pub v: f32,
 }
 
 trait Material {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> ScatterRecord;
+    fn emitted(&self, u: f32, v: f32, point: &V3) -> V3 {
+        V3(0.0, 0.0, 0.0)
+    }
 }
 
 #[derive(Clone)]
@@ -122,10 +127,29 @@ impl Material for Dielectric {
     }
 }
 
+struct DiffuseLight {
+    emit: Textures,
+}
+
+impl Material for DiffuseLight {
+    fn scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> ScatterRecord {
+        ScatterRecord {
+            attenuation: V3(0.0, 0.0, 0.0),
+            scattered: Ray { origin: V3(0.0, 0.0, 0.0), direction: V3(0.0, 0.0, 0.0) },
+            is_scattered: false,
+        }
+    }
+
+    fn emitted(&self, u: f32, v: f32, point: &V3) -> V3 {
+        self.emit.value(u, v, point)
+    }
+}
+
 pub enum Materials {
     Lambertian(Lambertian),
     Metal(Metal),
     Dielectric(Dielectric),
+    DiffuseLight(DiffuseLight),
 }
 
 impl Materials {
@@ -148,11 +172,27 @@ impl Materials {
         })
     }
 
+    pub fn diffuse_light(emit: Textures) -> Materials {
+        Materials::DiffuseLight(DiffuseLight {
+            emit: emit
+        })
+    }
+
     pub fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> ScatterRecord {
         match self {
             Materials::Lambertian(m) => m.scatter(ray_in, hit_record),
             Materials::Metal(m) => m.scatter(ray_in, hit_record),
             Materials::Dielectric(m) => m.scatter(ray_in, hit_record),
+            Materials::DiffuseLight(m) => m.scatter(ray_in, hit_record),
+        }
+    }
+
+    pub fn emitted(&self, u: f32, v: f32, point: &V3) -> V3 {
+        match self {
+            Materials::Lambertian(m) => m.emitted(u,v,point),
+            Materials::Metal(m) => m.emitted(u,v,point),
+            Materials::Dielectric(m) => m.emitted(u,v,point),
+            Materials::DiffuseLight(m) => m.emitted(u,v,point),
         }
     }
 }
