@@ -391,6 +391,53 @@ impl Hit for RotateY {
     }
 }
 
+struct ConstantMedium {
+    density: f32,
+    boundary: Box<Figures>,
+}
+
+impl Hit for ConstantMedium {
+    fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
+        let db = false;
+
+        if let Some(mut rec1) = self.boundary.hit(ray, std::f32::MIN, std::f32::MAX) {
+            if let Some(mut rec2) = self.boundary.hit(ray, rec1.at + 0.0001, std::f32::MAX) {
+                if rec1.at < tmin {
+                    rec1.at = tmin;
+                }
+                if rec2.at > tmax {
+                    rec2.at = tmax;
+                }
+                if rec1.at >= rec2.at {
+                    return None;
+                }
+                if rec1.at < 0.0 {
+                    rec1.at = 0.0;
+                }
+                let distance_inside_boundary = (rec2.at - rec1.at) * ray.direction.norm();
+                let hit_distance = - (1.0 / self.density) * rand::random::<f32>().log(std::f32::consts::E);
+                if hit_distance < distance_inside_boundary {
+                    let at = rec1.at + hit_distance / ray.direction.norm();
+
+                    return Some(HitRecord {
+                        at: at,
+                        point: ray.extend_at(at),
+                        normal: V3(1.0, 0.0, 0.0),
+                        u: 0.0,
+                        v: 0.0,
+                    });
+                }
+            }
+        }
+
+        None
+    }
+
+    fn bounding_box(&self, t0: f32, t1: f32) -> Option<Aabb> {
+        self.boundary.bounding_box(t0, t1)
+    }
+}
+
 pub enum Figures {
     Sphere(Sphere),
     XYRect(XYRect),
@@ -400,6 +447,7 @@ pub enum Figures {
     Cuboid(Cuboid),
     Translate(Translate),
     RotateY(RotateY),
+    ConstantMedium(ConstantMedium),
     Figures(Vec<Figures>),
 }
 
@@ -462,6 +510,13 @@ impl Figures {
         Figures::RotateY(RotateY::new(angle, figure))
     }
 
+    pub fn constant_medium(density: f32, boundary: Figures) -> Figures {
+        Figures::ConstantMedium(ConstantMedium {
+            density: density,
+            boundary: Box::new(boundary),
+        })
+    }
+
     pub fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         match self {
             Figures::Sphere(f) => f.hit(ray, tmin, tmax),
@@ -472,6 +527,7 @@ impl Figures {
             Figures::Cuboid(f) => f.hit(ray, tmin, tmax),
             Figures::Translate(f) => f.hit(ray, tmin, tmax),
             Figures::RotateY(f) => f.hit(ray, tmin, tmax),
+            Figures::ConstantMedium(f) => f.hit(ray, tmin, tmax),
             Figures::Figures(fs) => {
                 let mut closest_parameter = tmax;
                 let mut record = None;
@@ -498,6 +554,7 @@ impl Figures {
             Figures::Cuboid(f) => f.bounding_box(tmin, tmax),
             Figures::Translate(f) => f.bounding_box(tmin, tmax),
             Figures::RotateY(f) => f.bounding_box(tmin, tmax),
+            Figures::ConstantMedium(f) => f.bounding_box(tmin, tmax),
             Figures::Figures(fs) => unimplemented!(),
         }
     }

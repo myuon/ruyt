@@ -248,7 +248,7 @@ fn create_random_scene() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 400;
+    let ns = 1000;
 
     let lookfrom = V3(278.0, 278.0, -800.0);
     let lookat = V3(278.0, 278.0, 0.0);
@@ -269,8 +269,8 @@ fn main() {
                 material: Materials::lambertian(Textures::solid(V3(0.65, 0.05, 0.05))),
             },
             Objects {
-                figure: Figures::xz_rect(213.0, 343.0, 227.0, 332.0, 554.0),
-                material: Materials::diffuse_light(Textures::solid(V3(15.0, 15.0, 15.0))),
+                figure: Figures::xz_rect(113.0, 443.0, 127.0, 432.0, 554.0),
+                material: Materials::diffuse_light(Textures::solid(V3(7.0, 7.0, 7.0))),
             },
             Objects {
                 figure: Figures::xz_rect(0.0, 555.0, 0.0, 555.0, 555.0),
@@ -285,12 +285,12 @@ fn main() {
                 material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
             },
             Objects {
-                figure: Figures::translate(V3(130.0, 0.0, 65.0), Figures::rotate_y(-18.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 165.0, 165.0)))),
-                material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+                figure: Figures::constant_medium(0.01, Figures::translate(V3(130.0, 0.0, 65.0), Figures::rotate_y(-18.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 165.0, 165.0))))),
+                material: Materials::lambertian(Textures::solid(V3(1.0, 1.0, 1.0))),
             },
             Objects {
-                figure: Figures::translate(V3(265.0, 0.0, 295.0), Figures::rotate_y(15.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 330.0, 165.0)))),
-                material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+                figure: Figures::constant_medium(0.01, Figures::translate(V3(265.0, 0.0, 295.0), Figures::rotate_y(15.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 330.0, 165.0))))),
+                material: Materials::lambertian(Textures::solid(V3(0.0, 0.0, 0.0))),
             },
         ]
     };
