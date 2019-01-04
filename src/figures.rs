@@ -273,14 +273,87 @@ impl Hit for Cuboid {
     }
 }
 
+struct Translate {
+    offset: V3,
+    figure: Box<Figures>,
+}
+
+impl Hit for Translate {
+    fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
+        let moved_ray = Ray { origin: ray.origin - self.offset, direction: ray.direction };
+        self.figure.hit(&moved_ray, tmin, tmax).map(|mut rec| {
+            rec.point = rec.point + self.offset;
+            rec
+        })
+    }
+
+    fn bounding_box(&self, t0: f32, t1: f32) -> Option<Aabb> {
+        self.figure.bounding_box(t0, t1).map(|mut bbox| {
+            bbox = Aabb {
+                min: bbox.min,
+                max: bbox.max,
+            };
+            bbox
+        })
+    }
+}
+
+struct RotateY {
+    sin_theta: f32,
+    cos_theta: f32,
+    figure: Box<Figures>,
+}
+
+impl RotateY {
+    fn new(angle: f32, figure: Figures) -> RotateY {
+        let radians = (std::f32::consts::PI / 180.0) * angle;
+
+        RotateY {
+            sin_theta: radians.sin(),
+            cos_theta: radians.cos(),
+            figure: Box::new(figure),
+        }
+    }
+}
+
+impl Hit for RotateY {
+    fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
+        let mut origin = ray.origin;
+        let mut direction = ray.direction;
+        origin.0 = self.cos_theta * ray.origin.0 - self.sin_theta * ray.origin.2;
+        origin.2 = self.sin_theta * ray.origin.0 + self.cos_theta * ray.origin.2;
+        direction.0 = self.cos_theta * ray.direction.0 - self.sin_theta * ray.direction.2;
+        direction.2 = self.sin_theta * ray.direction.0 + self.cos_theta * ray.direction.2;
+        let rotated_r = Ray { origin: origin, direction: direction };
+
+        self.figure.hit(&rotated_r, tmin, tmax).map(|mut rec| {
+            let mut point = rec.point;
+            let mut normal = rec.normal;
+            point.0 = self.cos_theta * rec.point.0 + self.sin_theta * rec.point.2;
+            point.2 = - self.sin_theta * rec.point.0 + self.cos_theta * rec.point.2;
+            normal.0 = self.cos_theta * rec.normal.0 + self.sin_theta * rec.normal.2;
+            normal.2 = - self.sin_theta * rec.normal.0 + self.cos_theta * rec.normal.2;
+            rec.point = point;
+            rec.normal = normal;
+            rec
+        })
+    }
+
+    fn bounding_box(&self, t0: f32, t1: f32) -> Option<Aabb> {
+        unimplemented!()
+    }
+}
+
 pub enum Figures {
     Sphere(Sphere),
     XYRect(XYRect),
     YZRect(YZRect),
     XZRect(XZRect),
     FlipNormals(FlipNormals),
-    Figures(Vec<Figures>),
     Cuboid(Cuboid),
+    Translate(Translate),
+    RotateY(RotateY),
+    Figures(Vec<Figures>),
 }
 
 impl Figures {
@@ -331,6 +404,17 @@ impl Figures {
         Figures::Cuboid(Cuboid::new(p0, p1))
     }
 
+    pub fn translate(offset: V3, figure: Figures) -> Figures {
+        Figures::Translate(Translate {
+            offset: offset,
+            figure: Box::new(figure),
+        })
+    }
+
+    pub fn rotate_y(angle: f32, figure: Figures) -> Figures {
+        Figures::RotateY(RotateY::new(angle, figure))
+    }
+
     pub fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         match self {
             Figures::Sphere(f) => f.hit(ray, tmin, tmax),
@@ -339,6 +423,8 @@ impl Figures {
             Figures::XZRect(f) => f.hit(ray, tmin, tmax),
             Figures::FlipNormals(f) => f.hit(ray, tmin, tmax),
             Figures::Cuboid(f) => f.hit(ray, tmin, tmax),
+            Figures::Translate(f) => f.hit(ray, tmin, tmax),
+            Figures::RotateY(f) => f.hit(ray, tmin, tmax),
             Figures::Figures(fs) => {
                 let mut closest_parameter = tmax;
                 let mut record = None;
@@ -363,6 +449,8 @@ impl Figures {
             Figures::XZRect(f) => f.bounding_box(tmin, tmax),
             Figures::FlipNormals(f) => f.bounding_box(tmin, tmax),
             Figures::Cuboid(f) => f.bounding_box(tmin, tmax),
+            Figures::Translate(f) => f.bounding_box(tmin, tmax),
+            Figures::RotateY(f) => f.bounding_box(tmin, tmax),
             Figures::Figures(fs) => unimplemented!(),
         }
     }

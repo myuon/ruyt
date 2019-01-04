@@ -230,7 +230,7 @@ fn create_random_scene() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 400;
+    let ns = 4000;
 
     let lookfrom = V3(278.0, 278.0, -800.0);
     let lookat = V3(278.0, 278.0, 0.0);
@@ -267,11 +267,11 @@ fn main() {
                 material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
             },
             Objects {
-                figure: Figures::cuboid(V3(130.0, 0.0, 65.0), V3(295.0, 165.0, 230.0)),
+                figure: Figures::translate(V3(130.0, 0.0, 65.0), Figures::rotate_y(-18.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 165.0, 165.0)))),
                 material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
             },
             Objects {
-                figure: Figures::cuboid(V3(265.0, 0.0, 295.0), V3(430.0, 330.0, 460.0)),
+                figure: Figures::translate(V3(265.0, 0.0, 295.0), Figures::rotate_y(15.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 330.0, 165.0)))),
                 material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
             },
         ]
