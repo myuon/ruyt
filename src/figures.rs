@@ -237,12 +237,50 @@ impl Hit for FlipNormals {
     }
 }
 
+struct Cuboid {
+    pmin: V3,
+    pmax: V3,
+    figure: Box<Figures>,
+}
+
+impl Cuboid {
+    fn new(p0: V3, p1: V3) -> Cuboid {
+        Cuboid {
+            pmin: p0,
+            pmax: p1,
+            figure: Box::new(Figures::Figures(vec![
+                Figures::xy_rect(p0.x(), p1.x(), p0.y(), p1.y(), p1.z()),
+                Figures::flip_normals(Figures::xy_rect(p0.x(), p1.x(), p0.y(), p1.y(), p0.z())),
+                Figures::xz_rect(p0.x(), p1.x(), p0.z(), p1.z(), p1.y()),
+                Figures::flip_normals(Figures::xz_rect(p0.x(), p1.x(), p0.z(), p1.z(), p0.y())),
+                Figures::yz_rect(p0.y(), p1.y(), p0.z(), p1.z(), p1.x()),
+                Figures::flip_normals(Figures::yz_rect(p0.y(), p1.y(), p0.z(), p1.z(), p0.x())),
+            ]))
+        }
+    }
+}
+
+impl Hit for Cuboid {
+    fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
+        self.figure.hit(ray, tmin, tmax)
+    }
+
+    fn bounding_box(&self, t0: f32, t1: f32) -> Option<Aabb> {
+        Some(Aabb {
+            min: self.pmin,
+            max: self.pmax,
+        })
+    }
+}
+
 pub enum Figures {
     Sphere(Sphere),
     XYRect(XYRect),
     YZRect(YZRect),
     XZRect(XZRect),
     FlipNormals(FlipNormals),
+    Figures(Vec<Figures>),
+    Cuboid(Cuboid),
 }
 
 impl Figures {
@@ -289,6 +327,10 @@ impl Figures {
         })
     }
 
+    pub fn cuboid(p0: V3, p1: V3) -> Figures {
+        Figures::Cuboid(Cuboid::new(p0, p1))
+    }
+
     pub fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         match self {
             Figures::Sphere(f) => f.hit(ray, tmin, tmax),
@@ -296,6 +338,20 @@ impl Figures {
             Figures::YZRect(f) => f.hit(ray, tmin, tmax),
             Figures::XZRect(f) => f.hit(ray, tmin, tmax),
             Figures::FlipNormals(f) => f.hit(ray, tmin, tmax),
+            Figures::Cuboid(f) => f.hit(ray, tmin, tmax),
+            Figures::Figures(fs) => {
+                let mut closest_parameter = tmax;
+                let mut record = None;
+
+                for object in fs {
+                    if let Some(rec) = object.hit(ray, tmin, closest_parameter) {
+                        closest_parameter = rec.at;
+                        record = Some(rec);
+                    }
+                }
+
+                record
+            },
         }
     }
 
@@ -306,6 +362,8 @@ impl Figures {
             Figures::YZRect(f) => f.bounding_box(tmin, tmax),
             Figures::XZRect(f) => f.bounding_box(tmin, tmax),
             Figures::FlipNormals(f) => f.bounding_box(tmin, tmax),
+            Figures::Cuboid(f) => f.bounding_box(tmin, tmax),
+            Figures::Figures(fs) => unimplemented!(),
         }
     }
 }
