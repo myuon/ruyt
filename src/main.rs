@@ -230,32 +230,41 @@ fn create_random_scene() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 1000;
+    let ns = 40;
 
-    let lookfrom = V3(13.0, 2.0, 3.0);
-    let lookat = V3(0.0, 2.0, 0.0);
+    let lookfrom = V3(278.0, 278.0, -800.0);
+    let lookat = V3(278.0, 278.0, 0.0);
     let dist_to_focus = 10.0;
     let apertune = 0.0;
+    let vfov = 40.0;
 
-    let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), 30.0, w as f32 / h as f32, apertune, dist_to_focus);
+    let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), vfov, w as f32 / h as f32, apertune, dist_to_focus);
 //    let scene = create_random_scene();
     let scene = Scene {
         objects: vec![
             Objects {
-                figure: Figures::sphere(V3(0.0, -1000.0, 0.0), 1000.0),
-                material: Materials::lambertian(Textures::noise(1.0)),
+                figure: Figures::yz_rect(0.0, 555.0, 0.0, 555.0, 555.0),
+                material: Materials::lambertian(Textures::solid(V3(0.12, 0.45, 0.15))),
             },
             Objects {
-                figure: Figures::sphere(V3(0.0, 2.0, 0.0), 2.0),
-                material: Materials::lambertian(Textures::noise(1.0)),
+                figure: Figures::yz_rect(0.0, 555.0, 0.0, 555.0, 0.0),
+                material: Materials::lambertian(Textures::solid(V3(0.65, 0.05, 0.05))),
             },
             Objects {
-                figure: Figures::sphere(V3(0.0, 7.0, 0.0), 2.0),
-                material: Materials::diffuse_light(Textures::solid(V3(4.0, 4.0, 4.0))),
+                figure: Figures::xz_rect(213.0, 343.0, 227.0, 332.0, 554.0),
+                material: Materials::diffuse_light(Textures::solid(V3(15.0, 15.0, 15.0))),
             },
             Objects {
-                figure: Figures::xy_rect(3.0, 5.0, 1.0, 3.0, -2.0),
-                material: Materials::diffuse_light(Textures::solid(V3(4.0, 4.0, 4.0))),
+                figure: Figures::xz_rect(0.0, 555.0, 0.0, 555.0, 555.0),
+                material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+            },
+            Objects {
+                figure: Figures::xz_rect(0.0, 555.0, 0.0, 555.0, 0.0),
+                material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+            },
+            Objects {
+                figure: Figures::flip_normals(Figures::xy_rect(0.0, 555.0, 0.0, 555.0, 555.0)),
+                material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
             },
         ]
     };
