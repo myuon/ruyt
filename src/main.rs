@@ -91,6 +91,24 @@ impl Scene {
         record
     }
 
+    pub fn bounding_box(&self, t0: f32, t1: f32) -> Option<Aabb> {
+        if self.objects.len() < 1 {
+            return None;
+        }
+
+        self.objects[0].figure.bounding_box(t0, t1).map(|bbox| {
+            let mut result = bbox;
+
+            for object in self.objects.iter().skip(1) {
+                if let Some(bbox) = object.figure.bounding_box(t0, t1) {
+                    result = result.surround(&bbox);
+                }
+            }
+
+            result
+        })
+    }
+
     pub fn color(&self, ray: Ray, depth: i32) -> V3 {
         match self.hit(&ray, 0.001, std::f32::MAX) {
             Some((rec, object)) => {
@@ -230,7 +248,7 @@ fn create_random_scene() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 4000;
+    let ns = 400;
 
     let lookfrom = V3(278.0, 278.0, -800.0);
     let lookat = V3(278.0, 278.0, 0.0);
