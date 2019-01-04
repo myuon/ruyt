@@ -35,9 +35,9 @@ impl Color {
 
     fn from_f32(r: f32, g: f32, b: f32) -> Color {
         Color(
-            (r * 255.99) as u8,
-            (g * 255.99) as u8,
-            (b * 255.99) as u8,
+            (r.min(1.0) * 255.99) as u8,
+            (g.min(1.0) * 255.99) as u8,
+            (b.min(1.0) * 255.99) as u8,
         )
     }
 
@@ -245,55 +245,152 @@ fn create_random_scene() -> Scene {
     }
 }
 
+fn create_nextweek_scene() -> Scene {
+    let nb = 20;
+    let mut objects = vec![];
+
+    objects.push(
+        Objects {
+            figure: Figures::bvh_node(
+                (0..nb).map(move |i| {
+                    (0..nb).map(move |j| {
+                        let w = 100.0;
+
+                        Figures::cuboid(
+                            V3(
+                                -1000.0 + i as f32 * w,
+                                0.0,
+                                -1000.0 + j as f32 * w,
+                            ),
+                            V3(
+                                -1000.0 + i as f32 * w + w,
+                                100.0 * (rand::random::<f32>() + 0.01),
+                                -1000.0 + j as f32 * w + w,
+                            )
+                        )
+                    })
+                }).flatten().collect(),
+                0.0,
+                1.0,
+            ),
+            material: Materials::lambertian(
+                Textures::solid(V3(0.48, 0.83, 0.53))
+            ),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::xz_rect(123.0, 423.0, 147.0, 412.0, 554.0),
+            material: Materials::diffuse_light(Textures::solid(V3(7.0, 7.0, 7.0))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(400.0, 400.0, 200.0), 50.0),
+            material: Materials::lambertian(Textures::solid(V3(0.7, 0.3, 0.1))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(260.0, 150.0, 45.0), 50.0),
+            material: Materials::dielectric(1.5),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(0.0, 150.0, 145.0), 50.0),
+            material: Materials::metal(V3(0.8, 0.8, 0.9), 10.0),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(360.0, 150.0, 145.0), 70.0),
+            material: Materials::dielectric(1.5),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::constant_medium(0.2, Figures::sphere(V3(360.0, 150.0, 145.0), 70.0)),
+            material: Materials::lambertian(Textures::solid(V3(0.2, 0.4, 0.9))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(0.0, 0.0, 0.0), 5000.0),
+            material: Materials::dielectric(1.5),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::constant_medium(0.0001, Figures::sphere(V3(0.0, 0.0, 0.0), 5000.0)),
+            material: Materials::lambertian(Textures::solid(V3(1.0, 1.0, 1.0))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(400.0, 200.0, 400.0), 100.0),
+            material: Materials::lambertian(Textures::solid(V3(0.1, 0.4, 0.8))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(220.0, 280.0, 300.0), 80.0),
+            material: Materials::lambertian(Textures::noise(0.1)),
+        }
+    );
+
+    let ns = 1000;
+    objects.push(
+        Objects {
+            figure: Figures::translate(
+                V3(-100.0, 270.0, 395.0),
+                Figures::rotate_y(
+                    15.0,
+                    Figures::bvh_node(
+                        (0..ns).map(|_| {
+                            Figures::sphere(V3(
+                                165.0 * rand::random::<f32>(),
+                                165.0 * rand::random::<f32>(),
+                                165.0 * rand::random::<f32>(),
+                            ), 10.0)
+                        }).collect(),
+                        0.0,
+                        1.0
+                    )
+                )
+            ),
+            material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73)))
+        }
+    );
+
+    Scene {
+        objects: objects,
+    }
+}
+
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 1000;
+    let ns = 10000;
 
-    let lookfrom = V3(278.0, 278.0, -800.0);
-    let lookat = V3(278.0, 278.0, 0.0);
+    let lookfrom = V3(278.0, 278.0, -400.0);
+    let lookat = V3(238.0, 278.0, 0.0);
     let dist_to_focus = 10.0;
     let apertune = 0.0;
     let vfov = 40.0;
 
     let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), vfov, w as f32 / h as f32, apertune, dist_to_focus);
-//    let scene = create_random_scene();
-    let scene = Scene {
-        objects: vec![
-            Objects {
-                figure: Figures::yz_rect(0.0, 555.0, 0.0, 555.0, 555.0),
-                material: Materials::lambertian(Textures::solid(V3(0.12, 0.45, 0.15))),
-            },
-            Objects {
-                figure: Figures::yz_rect(0.0, 555.0, 0.0, 555.0, 0.0),
-                material: Materials::lambertian(Textures::solid(V3(0.65, 0.05, 0.05))),
-            },
-            Objects {
-                figure: Figures::xz_rect(113.0, 443.0, 127.0, 432.0, 554.0),
-                material: Materials::diffuse_light(Textures::solid(V3(7.0, 7.0, 7.0))),
-            },
-            Objects {
-                figure: Figures::xz_rect(0.0, 555.0, 0.0, 555.0, 555.0),
-                material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
-            },
-            Objects {
-                figure: Figures::xz_rect(0.0, 555.0, 0.0, 555.0, 0.0),
-                material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
-            },
-            Objects {
-                figure: Figures::flip_normals(Figures::xy_rect(0.0, 555.0, 0.0, 555.0, 555.0)),
-                material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
-            },
-            Objects {
-                figure: Figures::constant_medium(0.01, Figures::translate(V3(130.0, 0.0, 65.0), Figures::rotate_y(-18.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 165.0, 165.0))))),
-                material: Materials::lambertian(Textures::solid(V3(1.0, 1.0, 1.0))),
-            },
-            Objects {
-                figure: Figures::constant_medium(0.01, Figures::translate(V3(265.0, 0.0, 295.0), Figures::rotate_y(15.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 330.0, 165.0))))),
-                material: Materials::lambertian(Textures::solid(V3(0.0, 0.0, 0.0))),
-            },
-        ]
-    };
+    let scene = create_nextweek_scene();
 
     let renderer = Renderer {
         renderer: Box::new(move |i,j| {

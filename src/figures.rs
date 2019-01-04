@@ -78,6 +78,7 @@ trait Hit {
     fn bounding_box(&self, t0: f32, t1: f32) -> Option<Aabb>;
 }
 
+#[derive(Clone)]
 pub struct Sphere {
     center: V3,
     radius: f32,
@@ -122,6 +123,7 @@ impl Hit for Sphere {
     }
 }
 
+#[derive(Clone)]
 struct XYRect {
     x0: f32,
     x1: f32,
@@ -160,6 +162,7 @@ impl Hit for XYRect {
     }
 }
 
+#[derive(Clone)]
 struct YZRect {
     y0: f32,
     y1: f32,
@@ -198,6 +201,7 @@ impl Hit for YZRect {
     }
 }
 
+#[derive(Clone)]
 struct XZRect {
     x0: f32,
     x1: f32,
@@ -236,6 +240,7 @@ impl Hit for XZRect {
     }
 }
 
+#[derive(Clone)]
 struct FlipNormals {
     figure: Box<Figures>,
 }
@@ -253,6 +258,7 @@ impl Hit for FlipNormals {
     }
 }
 
+#[derive(Clone)]
 struct Cuboid {
     pmin: V3,
     pmax: V3,
@@ -289,6 +295,7 @@ impl Hit for Cuboid {
     }
 }
 
+#[derive(Clone)]
 struct Translate {
     offset: V3,
     figure: Box<Figures>,
@@ -314,6 +321,7 @@ impl Hit for Translate {
     }
 }
 
+#[derive(Clone)]
 struct RotateY {
     sin_theta: f32,
     cos_theta: f32,
@@ -391,6 +399,7 @@ impl Hit for RotateY {
     }
 }
 
+#[derive(Clone)]
 struct ConstantMedium {
     density: f32,
     boundary: Box<Figures>,
@@ -438,6 +447,90 @@ impl Hit for ConstantMedium {
     }
 }
 
+#[derive(Clone)]
+struct BvhNode {
+    bbox: Aabb,
+    left: Box<Figures>,
+    right: Box<Figures>
+}
+
+impl BvhNode {
+    fn new(mut figures: Vec<Figures>, time0: f32, time1: f32) -> BvhNode {
+        let axis = (3.0 * rand::random::<f32>()) as i32;
+
+        if axis == 0 {
+            figures.sort_by(BvhNode::box_x_compare);
+        } else if axis == 1 {
+            figures.sort_by(BvhNode::box_y_compare);
+        } else {
+            figures.sort_by(BvhNode::box_z_compare);
+        }
+
+        let n = figures.len();
+
+        let (box_left, box_right) =
+            if n == 1 {
+                (figures[0].clone(), figures[0].clone())
+            } else if n == 2 {
+                (figures[0].clone(), figures[1].clone())
+            } else {
+                let (former, latter) = figures.split_at(n / 2);
+                (
+                    Figures::bvh_node(former.to_vec(), time0, time1),
+                    Figures::bvh_node(latter.to_vec(), time0, time1),
+                )
+            };
+
+        BvhNode {
+            bbox: box_left.bounding_box(time0, time1).unwrap().surround(&box_right.bounding_box(time0, time1).unwrap()),
+            left: Box::new(box_left),
+            right: Box::new(box_right),
+        }
+    }
+
+    fn box_x_compare(left: &Figures, right: &Figures) -> ::std::cmp::Ordering {
+        left.bounding_box(0.0, 0.0).unwrap().min.x().partial_cmp(&right.bounding_box(0.0, 0.0).unwrap().min.x()).unwrap_or(::std::cmp::Ordering::Equal)
+    }
+
+    fn box_y_compare(left: &Figures, right: &Figures) -> ::std::cmp::Ordering {
+        left.bounding_box(0.0, 0.0).unwrap().min.y().partial_cmp(&right.bounding_box(0.0, 0.0).unwrap().min.y()).unwrap_or(::std::cmp::Ordering::Equal)
+    }
+
+    fn box_z_compare(left: &Figures, right: &Figures) -> ::std::cmp::Ordering {
+        left.bounding_box(0.0, 0.0).unwrap().min.z().partial_cmp(&right.bounding_box(0.0, 0.0).unwrap().min.z()).unwrap_or(::std::cmp::Ordering::Equal)
+    }
+}
+
+impl Hit for BvhNode {
+    fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
+        if self.bbox.hit(ray, tmin, tmax) {
+            match (self.left.hit(ray, tmin, tmax), self.right.hit(ray, tmin, tmax)) {
+                (Some(hit_left), Some(hit_right)) => {
+                    if hit_left.at < hit_right.at {
+                        Some(hit_left)
+                    } else {
+                        Some(hit_right)
+                    }
+                },
+                (Some(hit_left), _) => {
+                    Some(hit_left)
+                },
+                (_, Some(hit_right)) => {
+                    Some(hit_right)
+                },
+                (None, None) => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    fn bounding_box(&self, t0: f32, t1: f32) -> Option<Aabb> {
+        Some(self.bbox.clone())
+    }
+}
+
+#[derive(Clone)]
 pub enum Figures {
     Sphere(Sphere),
     XYRect(XYRect),
@@ -449,6 +542,7 @@ pub enum Figures {
     RotateY(RotateY),
     ConstantMedium(ConstantMedium),
     Figures(Vec<Figures>),
+    BvhNode(BvhNode),
 }
 
 impl Figures {
@@ -517,6 +611,10 @@ impl Figures {
         })
     }
 
+    pub fn bvh_node(figures: Vec<Figures>, time0: f32, time1: f32) -> Figures {
+        Figures::BvhNode(BvhNode::new(figures, time0, time1))
+    }
+
     pub fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         match self {
             Figures::Sphere(f) => f.hit(ray, tmin, tmax),
@@ -528,6 +626,7 @@ impl Figures {
             Figures::Translate(f) => f.hit(ray, tmin, tmax),
             Figures::RotateY(f) => f.hit(ray, tmin, tmax),
             Figures::ConstantMedium(f) => f.hit(ray, tmin, tmax),
+            Figures::BvhNode(f) => f.hit(ray, tmin, tmax),
             Figures::Figures(fs) => {
                 let mut closest_parameter = tmax;
                 let mut record = None;
@@ -555,6 +654,7 @@ impl Figures {
             Figures::Translate(f) => f.bounding_box(tmin, tmax),
             Figures::RotateY(f) => f.bounding_box(tmin, tmax),
             Figures::ConstantMedium(f) => f.bounding_box(tmin, tmax),
+            Figures::BvhNode(f) => f.bounding_box(tmin, tmax),
             Figures::Figures(fs) => unimplemented!(),
         }
     }
