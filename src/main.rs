@@ -107,12 +107,13 @@ impl Scene {
                         None => {
                             let light_clone = light_shape.clone();
                             let plight = HitPdf::new(light_shape, rec.point);
-                            let p = MixPdf::new(Pdfs::HitPdf(plight), scatter_rec.pdf.unwrap());
+                            let p = plight;
+                            //let p = MixPdf::new(Pdfs::HitPdf(plight), scatter_rec.pdf.unwrap());
                             let scattered = Ray {
                                 origin: rec.point,
                                 direction: p.generate(),
                             };
-                            let pdf_val = p.value(scattered.direction);
+                            let pdf_val = p.value(&scattered.direction);
                             
                             emitted + (scatter_rec.attenuation.scale(object.material.scattering_pdf(&ray, &rec, &scattered)) * self.color(scattered, light_clone, depth + 1)).scale(1.0 / pdf_val)
                         },
@@ -455,7 +456,7 @@ fn create_cornell_box() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 100;
+    let ns = 10;
 
     let lookfrom = V3(278.0, 278.0, -800.0);
     let lookat = V3(238.0, 278.0, 0.0);
@@ -465,6 +466,11 @@ fn main() {
 
     let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), vfov, w as f32 / h as f32, apertune, dist_to_focus);
     let scene = create_cornell_box();
+    let de_nan = |c: V3| {
+        c.map(&|t| {
+            if t.is_nan() { 0.0 } else { t }
+        })
+    };
 
     let renderer = Renderer {
         renderer: Box::new(move |i,j| {

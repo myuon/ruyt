@@ -1,6 +1,11 @@
 use crate::vector::*;
 use crate::figures::*;
 
+pub trait Pdf {
+    fn value(&self, direction: &V3) -> f32;
+    fn generate(&self) -> V3;
+}
+
 #[derive(Clone)]
 pub struct OnbPdf {
     uvw: Onb,
@@ -12,8 +17,10 @@ impl OnbPdf {
             uvw: Onb::new_from_w(vec),
         }
     }
+}
 
-    pub fn value(&self, direction: &V3) -> f32 {
+impl Pdf for OnbPdf {
+    fn value(&self, direction: &V3) -> f32 {
         let cosine = direction.normalize().dot(self.uvw.w());
         if cosine > 0.0 {
             cosine / std::f32::consts::PI
@@ -22,7 +29,7 @@ impl OnbPdf {
         }
     }
 
-    pub fn generate(&self) -> V3 {
+    fn generate(&self) -> V3 {
         self.uvw.local(&Onb::random_cosine_direction())
     }
 }
@@ -40,12 +47,14 @@ impl HitPdf {
             origin: origin,
         }
     }
+}
 
-    pub fn value(&self, direction: V3) -> f32 {
-        self.figure.pdf_value(self.origin, direction)
+impl Pdf for HitPdf {
+    fn value(&self, direction: &V3) -> f32 {
+        self.figure.pdf_value(self.origin, *direction)
     }
 
-    pub fn generate(&self) -> V3 {
+    fn generate(&self) -> V3 {
         self.figure.random(self.origin)
     }
 }
@@ -61,12 +70,14 @@ impl MixPdf {
             pdf: (Box::new(p0), Box::new(p1))
         }
     }
+}
 
-    pub fn value(&self, direction: V3) -> f32 {
+impl Pdf for MixPdf {
+    fn value(&self, direction: &V3) -> f32 {
         0.5 * self.pdf.0.value(direction) + 0.5 * self.pdf.1.value(direction)
     }
 
-    pub fn generate(&self) -> V3 {
+    fn generate(&self) -> V3 {
         if rand::random::<f32>() < 0.5 {
             self.pdf.0.generate()
         } else {
@@ -86,8 +97,10 @@ impl CosinePdf {
             uvw: Onb::new_from_w(w)
         }
     }
+}
 
-    pub fn value(&self, direction: V3) -> f32 {
+impl Pdf for CosinePdf {
+    fn value(&self, direction: &V3) -> f32 {
         let cosine = direction.normalize().dot(self.uvw.w());
         if cosine > 0.0 {
             cosine / std::f32::consts::PI
@@ -96,7 +109,7 @@ impl CosinePdf {
         }
     }
 
-    pub fn generate(&self) -> V3 {
+    fn generate(&self) -> V3 {
         self.uvw.local(&Onb::random_cosine_direction())
     }
 }
@@ -108,8 +121,8 @@ pub enum Pdfs {
     HitPdf(HitPdf),
 }
 
-impl Pdfs {
-    pub fn value(&self, direction: V3) -> f32 {
+impl Pdf for Pdfs {
+    fn value(&self, direction: &V3) -> f32 {
         match self {
             Pdfs::MixPdf(p) => p.value(direction),
             Pdfs::CosinePdf(p) => p.value(direction),
@@ -117,7 +130,7 @@ impl Pdfs {
         }
     }
 
-    pub fn generate(&self) -> V3 {
+    fn generate(&self) -> V3 {
         match self {
             Pdfs::MixPdf(p) => p.generate(),
             Pdfs::CosinePdf(p) => p.generate(),
