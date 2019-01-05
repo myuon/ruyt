@@ -107,8 +107,7 @@ impl Scene {
                         None => {
                             let light_clone = light_shape.clone();
                             let plight = HitPdf::new(light_shape, rec.point);
-                            let p = plight;
-                            //let p = MixPdf::new(Pdfs::HitPdf(plight), scatter_rec.pdf.unwrap());
+                            let p = MixPdf::new(Pdfs::HitPdf(plight), scatter_rec.pdf.unwrap());
                             let scattered = Ray {
                                 origin: rec.point,
                                 direction: p.generate(),
@@ -456,7 +455,7 @@ fn create_cornell_box() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 10;
+    let ns = 100;
 
     let lookfrom = V3(278.0, 278.0, -800.0);
     let lookat = V3(238.0, 278.0, 0.0);
