@@ -91,31 +91,13 @@ impl Scene {
         record
     }
 
-    pub fn bounding_box(&self, t0: f32, t1: f32) -> Option<Aabb> {
-        if self.objects.len() < 1 {
-            return None;
-        }
-
-        self.objects[0].figure.bounding_box(t0, t1).map(|bbox| {
-            let mut result = bbox;
-
-            for object in self.objects.iter().skip(1) {
-                if let Some(bbox) = object.figure.bounding_box(t0, t1) {
-                    result = result.surround(&bbox);
-                }
-            }
-
-            result
-        })
-    }
-
     pub fn color(&self, ray: Ray, depth: i32) -> V3 {
         match self.hit(&ray, 0.001, std::f32::MAX) {
             Some((rec, object)) => {
                 let sc = object.material.scatter(&ray, &rec);
                 let emitted = object.material.emitted(rec.u, rec.v, &rec.point);
                 if depth < 50 && sc.is_scattered {
-                    emitted + sc.attenuation * self.color(sc.scattered, depth + 1)
+                    emitted + (sc.albedo.scale(object.material.scattering_pdf(&ray, &rec, &sc.scattered)) * self.color(sc.scattered, depth + 1)).scale(1.0 / sc.pdf)
                 } else {
                     emitted
                 }

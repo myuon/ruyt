@@ -12,6 +12,11 @@ pub struct HitRecord {
 
 trait Material {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> ScatterRecord;
+
+    fn scattering_pdf(&self, ray_in: &Ray, hit_record: &HitRecord, scattered: &Ray) -> f32 {
+        0.0
+    }
+
     fn emitted(&self, u: f32, v: f32, point: &V3) -> V3 {
         V3(0.0, 0.0, 0.0)
     }
@@ -19,9 +24,10 @@ trait Material {
 
 #[derive(Clone)]
 pub struct ScatterRecord {
-    pub attenuation: V3,
+    pub albedo: V3,
     pub scattered: Ray,
     pub is_scattered: bool,
+    pub pdf: f32,
 }
 
 pub struct Lambertian {
@@ -30,15 +36,34 @@ pub struct Lambertian {
 
 impl Material for Lambertian {
     fn scatter(&self, _ray_in: &Ray, rec: &HitRecord) -> ScatterRecord {
-        let target = rec.point + rec.normal + V3::new_in_unit_sphere();
+        let choose_direction = || {
+            loop {
+                let direction = V3::new_in_unit_sphere();
+
+                if direction.dot(rec.normal) >= 0.0 {
+                    return direction;
+                }
+            }
+        };
+
+        let direction = choose_direction();
+        let scattered = Ray {
+            origin: rec.point,
+            direction: direction.normalize(),
+        };
+        let pdf = 0.5 / ::std::f32::consts::PI;
+
         ScatterRecord {
-            attenuation: self.albedo.value(0.0, 0.0, &rec.point),
-            scattered: Ray {
-                origin: rec.point,
-                direction: target - rec.point,
-            },
+            albedo: self.albedo.value(rec.u, rec.v, &rec.point),
+            scattered: scattered,
             is_scattered: true,
+            pdf: pdf,
         }
+    }
+
+    fn scattering_pdf(&self, ray_in: &Ray, hit_record: &HitRecord, scattered: &Ray) -> f32 {
+        let cosine = hit_record.normal.dot(scattered.direction.normalize());
+        if cosine < 0.0 { 0.0 } else { cosine / ::std::f32::consts::PI }
     }
 }
 
@@ -63,9 +88,10 @@ impl Material for Metal {
         let is_scattered = ray.direction.dot(rec.normal) > 0.0;
 
         ScatterRecord {
-            attenuation: self.albedo,
+            albedo: self.albedo,
             scattered: ray,
             is_scattered: is_scattered,
+            pdf: 1.0,
         }
     }
 }
@@ -113,15 +139,17 @@ impl Material for Dielectric {
             let reflect_prob = self.schlick(cosine);
 
             ScatterRecord {
-                attenuation: V3(1.0, 1.0, 1.0),
+                albedo: V3(1.0, 1.0, 1.0),
                 scattered: Ray { origin: rec.point, direction: if rand::random::<f32>() < reflect_prob { reflected } else { refracted } },
                 is_scattered: true,
+                pdf: 1.0,
             }
         } else {
             ScatterRecord {
-                attenuation: V3(1.0, 1.0, 1.0),
+                albedo: V3(1.0, 1.0, 1.0),
                 scattered: Ray { origin: rec.point, direction: reflected },
                 is_scattered: true,
+                pdf: 1.0,
             }
         }
     }
@@ -134,9 +162,10 @@ struct DiffuseLight {
 impl Material for DiffuseLight {
     fn scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> ScatterRecord {
         ScatterRecord {
-            attenuation: V3(0.0, 0.0, 0.0),
+            albedo: V3(0.0, 0.0, 0.0),
             scattered: Ray { origin: V3(0.0, 0.0, 0.0), direction: V3(0.0, 0.0, 0.0) },
             is_scattered: false,
+            pdf: 1.0,
         }
     }
 
@@ -184,6 +213,15 @@ impl Materials {
             Materials::Metal(m) => m.scatter(ray_in, hit_record),
             Materials::Dielectric(m) => m.scatter(ray_in, hit_record),
             Materials::DiffuseLight(m) => m.scatter(ray_in, hit_record),
+        }
+    }
+
+    pub fn scattering_pdf(&self, ray_in: &Ray, hit_record: &HitRecord, scattered: &Ray) -> f32 {
+        match self {
+            Materials::Lambertian(m) => m.scattering_pdf(ray_in, hit_record, scattered),
+            Materials::Metal(m) => m.scattering_pdf(ray_in, hit_record, scattered),
+            Materials::Dielectric(m) => m.scattering_pdf(ray_in, hit_record, scattered),
+            Materials::DiffuseLight(m) => m.scattering_pdf(ray_in, hit_record, scattered),
         }
     }
 
