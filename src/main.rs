@@ -365,7 +365,7 @@ fn create_cornell_box() -> Scene {
 
     objects.push(
         Objects {
-            figure: Figures::yz_rect(0.0, 555.0, 0.0, 555.0, 555.0),
+            figure: Figures::flip_normals(Figures::yz_rect(0.0, 555.0, 0.0, 555.0, 555.0)),
             material: Materials::lambertian(Textures::solid(V3(0.12, 0.45, 0.15))),
         }
     );
@@ -386,7 +386,7 @@ fn create_cornell_box() -> Scene {
 
     objects.push(
         Objects {
-            figure: Figures::xz_rect(0.0, 555.0, 0.0, 555.0, 555.0),
+            figure: Figures::flip_normals(Figures::xz_rect(0.0, 555.0, 0.0, 555.0, 555.0)),
             material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
         }
     );

@@ -187,7 +187,7 @@ impl Hit for YZRect {
         Some(HitRecord {
             at: t,
             point: ray.extend_at(t),
-            normal: V3(0.0, 0.0, 1.0),
+            normal: V3(1.0, 0.0, 0.0),
             u: (y - self.y0) / (self.y1 - self.y0),
             v: (z - self.z0) / (self.z1 - self.z0),
         })
@@ -226,7 +226,7 @@ impl Hit for XZRect {
         Some(HitRecord {
             at: t,
             point: ray.extend_at(t),
-            normal: V3(0.0, 0.0, 1.0),
+            normal: V3(0.0, 1.0, 0.0),
             u: (x - self.x0) / (self.x1 - self.x0),
             v: (z - self.z0) / (self.z1 - self.z0),
         })
