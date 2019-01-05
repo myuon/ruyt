@@ -72,31 +72,6 @@ impl Renderer {
     }
 }
 
-struct Pdf {
-    uvw: Onb,
-}
-
-impl Pdf {
-    fn new(vec: &V3) -> Pdf {
-        Pdf {
-            uvw: Onb::new_from_w(vec),
-        }
-    }
-
-    fn value(&self, direction: &V3) -> f32 {
-        let cosine = direction.normalize().dot(self.uvw.w());
-        if cosine > 0.0 {
-            cosine / std::f32::consts::PI
-        } else {
-            0.0
-        }
-    }
-
-    fn generate(&self) -> V3 {
-        self.uvw.local(&Onb::random_cosine_direction())
-    }
-}
-
 struct Scene {
     objects: Vec<Objects>,
 }
@@ -122,12 +97,15 @@ impl Scene {
                 let sc = object.material.scatter(&ray, &rec);
                 let emitted = object.material.emitted(rec.u, rec.v, &rec.point);
                 if depth < 50 && sc.is_scattered {
-                    let pdf = Pdf::new(&rec.normal);
+                    let light_shape = Figures::xz_rect(213.0, 343.0, 227.0, 332.0, 554.0);
+                    let p0 = HitPdf::new(light_shape, rec.point);
+                    let p1 = CosinePdf::new(&rec.normal);
+                    let p = MixPdf::new(Pdfs::HitPdf(p0), Pdfs::CosinePdf(p1));
                     let scattered = Ray {
                         origin: rec.point,
-                        direction: pdf.generate(),
+                        direction: p.generate(),
                     };
-                    let pdf_val = pdf.value(&scattered.direction);
+                    let pdf_val = p.value(scattered.direction);
                     
                     emitted + (sc.albedo.scale(object.material.scattering_pdf(&ray, &rec, &scattered)) * self.color(scattered, depth + 1)).scale(1.0 / pdf_val)
                 } else {
@@ -459,7 +437,7 @@ fn create_cornell_box() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 100;
+    let ns = 1000;
 
     let lookfrom = V3(278.0, 278.0, -800.0);
     let lookat = V3(238.0, 278.0, 0.0);
