@@ -30,28 +30,54 @@ pub struct ScatterRecord {
     pub pdf: f32,
 }
 
+struct Onb {
+    axis: (V3, V3, V3),
+}
+
+impl Onb {
+    fn random_cosine_direction() -> V3 {
+        let r1 = rand::random::<f32>();
+        let r2 = rand::random::<f32>();
+        let z = (1.0 - r2).sqrt();
+        let phi = 2.0 * ::std::f32::consts::PI * r1;
+        let x = phi.cos() * 2.0 * r2.sqrt();
+        let y = phi.sin() * 2.0 * r2.sqrt();
+        V3(x,y,z)
+    }
+
+    fn new_from_w(n: &V3) -> Onb {
+        let w = n.normalize();
+        let a = if w.x().abs() > 0.9 {
+            V3(0.0, 1.0, 0.0)
+        } else {
+            V3(1.0, 0.0, 0.0)
+        };
+        let v = w.cross(a).normalize();
+        let u = w.cross(v);
+
+        Onb {
+            axis: (u,v,w),
+        }
+    }
+
+    fn local(&self, vec: &V3) -> V3 {
+        self.axis.0.scale(vec.x()) + self.axis.1.scale(vec.y()) + self.axis.2.scale(vec.z())
+    }
+}
+
 pub struct Lambertian {
     albedo: Textures,
 }
 
 impl Material for Lambertian {
     fn scatter(&self, _ray_in: &Ray, rec: &HitRecord) -> ScatterRecord {
-        let choose_direction = || {
-            loop {
-                let direction = V3::new_in_unit_sphere();
-
-                if direction.dot(rec.normal) >= 0.0 {
-                    return direction;
-                }
-            }
-        };
-
-        let direction = choose_direction();
+        let uvw = Onb::new_from_w(&rec.normal);
+        let direction = uvw.local(&Onb::random_cosine_direction());
         let scattered = Ray {
             origin: rec.point,
             direction: direction.normalize(),
         };
-        let pdf = 0.5 / ::std::f32::consts::PI;
+        let pdf = uvw.axis.2.dot(scattered.direction) / ::std::f32::consts::PI;
 
         ScatterRecord {
             albedo: self.albedo.value(rec.u, rec.v, &rec.point),
