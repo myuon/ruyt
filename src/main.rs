@@ -110,7 +110,7 @@ impl Scene {
                             let p = MixPdf::new(Pdfs::HitPdf(plight), scatter_rec.pdf.unwrap());
                             let scattered = Ray {
                                 origin: rec.point,
-                                direction: p.generate(),
+                                direction: V3U::new(p.generate()),
                             };
                             let pdf_val = p.value(&scattered.direction);
                             
@@ -163,7 +163,7 @@ impl Camera {
 
         Ray {
             origin: self.origin + offset,
-            direction: self.lower_left_corner + self.horizontal.scale(u) + self.vertical.scale(v) - self.origin - offset
+            direction: V3U::new(self.lower_left_corner + self.horizontal.scale(u) + self.vertical.scale(v) - self.origin - offset)
         }
     }
 }

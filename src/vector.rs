@@ -1,6 +1,20 @@
 use std::ops::*;
 use std::iter::Sum;
 
+pub trait Dim3 {
+    fn x(&self) -> f32;
+    fn y(&self) -> f32;
+    fn z(&self) -> f32;
+}
+
+pub trait Dim3Dot<Other: Dim3>: Dim3 {
+    fn dot(&self, other: Other) -> f32 {
+        self.x() * other.x() +
+        self.y() * other.y() +
+        self.z() * other.z()
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct V3(pub f32, pub f32, pub f32);
 
@@ -21,10 +35,6 @@ impl V3 {
                 return p;
             }
         }
-    }
-
-    pub fn dot(self, other: V3) -> f32 {
-        self.0 * other.0 + self.1 * other.1 + self.2 * other.2
     }
 
     pub fn cross(self, other: V3) -> V3 {
@@ -51,22 +61,26 @@ impl V3 {
         self.scale(1.0 / self.norm())
     }
 
-    pub fn x(&self) -> f32 {
-        self.0
-    }
-
-    pub fn y(&self) -> f32 {
-        self.1
-    }
-
-    pub fn z(&self) -> f32 {
-        self.2
-    }
-
     pub fn map(self, f: &Fn(f32) -> f32) -> V3 {
         V3(f(self.0), f(self.1), f(self.2))
     }
 }
+
+impl Dim3 for V3 {
+    fn x(&self) -> f32 {
+        self.0
+    }
+
+    fn y(&self) -> f32 {
+        self.1
+    }
+
+    fn z(&self) -> f32 {
+        self.2
+    }
+}
+
+impl Dim3Dot<V3> for V3 {}
 
 impl Add<V3> for V3 {
     type Output = V3;
@@ -123,23 +137,33 @@ impl V3U {
         self.0
     }
 
-    pub fn x(&self) -> f32 {
+    pub fn scale(self, coeff: f32) -> V3 {
+        V3(self.x() * coeff, self.y() * coeff, self.z() * coeff)
+    }
+}
+
+impl Dim3 for V3U {
+    fn x(&self) -> f32 {
         self.0.x()
     }
 
-    pub fn y(&self) -> f32 {
+    fn y(&self) -> f32 {
         self.0.y()
     }
 
-    pub fn z(&self) -> f32 {
+    fn z(&self) -> f32 {
         self.0.z()
     }
 }
 
+impl Dim3Dot<V3U> for V3U {}
+impl Dim3Dot<V3> for V3U {}
+impl Dim3Dot<V3U> for V3 {}
+
 #[derive(Clone)]
 pub struct Ray {
     pub origin: V3,
-    pub direction: V3,
+    pub direction: V3U,
 }
 
 impl Ray {

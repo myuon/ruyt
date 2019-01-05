@@ -46,7 +46,7 @@ impl Material for Lambertian {
     }
 
     fn scattering_pdf(&self, ray_in: &Ray, hit_record: &HitRecord, scattered: &Ray) -> f32 {
-        let cosine = hit_record.normal.dot(scattered.direction.normalize());
+        let cosine = hit_record.normal.dot(scattered.direction);
         if cosine < 0.0 { 0.0 } else { cosine / ::std::f32::consts::PI }
     }
 }
@@ -64,10 +64,10 @@ impl Metal {
 
 impl Material for Metal {
     fn scatter(&self, ray_in: &Ray, rec: &HitRecord) -> ScatterRecord {
-        let reflected = Metal::reflect(&ray_in.direction.normalize(), &rec.normal);
+        let reflected = Metal::reflect(&ray_in.direction.as_V3(), &rec.normal);
         let specular_ray = Ray {
             origin: rec.point,
-            direction: reflected + V3::new_in_unit_sphere().scale(self.fuzz),
+            direction: V3U::new(reflected + V3::new_in_unit_sphere().scale(self.fuzz)),
         };
 
         ScatterRecord {
@@ -108,29 +108,29 @@ impl Dielectric {
 
 impl Material for Dielectric {
     fn scatter(&self, ray_in: &Ray, rec: &HitRecord) -> ScatterRecord {
-        let reflected = Dielectric::reflect(&ray_in.direction, &rec.normal);
+        let reflected = Dielectric::reflect(&ray_in.direction.as_V3(), &rec.normal);
         let (outward_normal, ni_over_nt, cosine) =
             if ray_in.direction.dot(rec.normal) > 0.0 {
-                let cosine = self.ref_idx * ray_in.direction.dot(rec.normal) / ray_in.direction.norm();
+                let cosine = self.ref_idx * ray_in.direction.dot(rec.normal);
                 (-rec.normal, self.ref_idx, cosine)
             } else {
-                let cosine = - ray_in.direction.dot(rec.normal) / ray_in.direction.norm();
+                let cosine = - ray_in.direction.dot(rec.normal);
                 (rec.normal, 1.0 / self.ref_idx, cosine)
             };
 
-        if let Some(refracted) = Dielectric::refract(&ray_in.direction, outward_normal, ni_over_nt) {
+        if let Some(refracted) = Dielectric::refract(&ray_in.direction.as_V3(), outward_normal, ni_over_nt) {
             let reflect_prob = self.schlick(cosine);
 
             ScatterRecord {
                 attenuation: V3(1.0, 1.0, 1.0),
-                specular_ray: Some(Ray { origin: rec.point, direction: if rand::random::<f32>() < reflect_prob { reflected } else { refracted } }),
+                specular_ray: Some(Ray { origin: rec.point, direction: if rand::random::<f32>() < reflect_prob { V3U::new(reflected) } else { V3U::new(refracted) } }),
                 is_scattered: true,
                 pdf: None,
             }
         } else {
             ScatterRecord {
                 attenuation: V3(1.0, 1.0, 1.0),
-                specular_ray: Some(Ray { origin: rec.point, direction: reflected }),
+                specular_ray: Some(Ray { origin: rec.point, direction: V3U::new(reflected) }),
                 is_scattered: true,
                 pdf: None,
             }
@@ -146,7 +146,7 @@ impl Material for DiffuseLight {
     fn scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> ScatterRecord {
         ScatterRecord {
             attenuation: V3(0.0, 0.0, 0.0),
-            specular_ray: Some(Ray { origin: V3(0.0, 0.0, 0.0), direction: V3(0.0, 0.0, 0.0) }),
+            specular_ray: Some(Ray { origin: V3(0.0, 0.0, 0.0), direction: V3U::new(V3(1.0, 0.0, 0.0)) }),
             is_scattered: false,
             pdf: None,
         }

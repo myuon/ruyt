@@ -2,7 +2,7 @@ use crate::vector::*;
 use crate::figures::*;
 
 pub trait Pdf {
-    fn value(&self, direction: &V3) -> f32;
+    fn value(&self, direction: &V3U) -> f32;
     fn generate(&self) -> V3;
 }
 
@@ -20,8 +20,8 @@ impl OnbPdf {
 }
 
 impl Pdf for OnbPdf {
-    fn value(&self, direction: &V3) -> f32 {
-        let cosine = direction.normalize().dot(self.uvw.w());
+    fn value(&self, direction: &V3U) -> f32 {
+        let cosine = direction.dot(self.uvw.w());
         if cosine > 0.0 {
             cosine / std::f32::consts::PI
         } else {
@@ -50,7 +50,7 @@ impl HitPdf {
 }
 
 impl Pdf for HitPdf {
-    fn value(&self, direction: &V3) -> f32 {
+    fn value(&self, direction: &V3U) -> f32 {
         self.figure.pdf_value(self.origin, *direction)
     }
 
@@ -73,7 +73,7 @@ impl MixPdf {
 }
 
 impl Pdf for MixPdf {
-    fn value(&self, direction: &V3) -> f32 {
+    fn value(&self, direction: &V3U) -> f32 {
         0.5 * self.pdf.0.value(direction) + 0.5 * self.pdf.1.value(direction)
     }
 
@@ -100,8 +100,8 @@ impl CosinePdf {
 }
 
 impl Pdf for CosinePdf {
-    fn value(&self, direction: &V3) -> f32 {
-        let cosine = direction.normalize().dot(self.uvw.w());
+    fn value(&self, direction: &V3U) -> f32 {
+        let cosine = direction.dot(self.uvw.w());
         if cosine > 0.0 {
             cosine / std::f32::consts::PI
         } else {
@@ -122,7 +122,7 @@ pub enum Pdfs {
 }
 
 impl Pdf for Pdfs {
-    fn value(&self, direction: &V3) -> f32 {
+    fn value(&self, direction: &V3U) -> f32 {
         match self {
             Pdfs::MixPdf(p) => p.value(direction),
             Pdfs::CosinePdf(p) => p.value(direction),

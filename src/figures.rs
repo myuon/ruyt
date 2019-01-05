@@ -57,7 +57,7 @@ pub struct Aabb {
 
 impl Aabb {
     fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> bool {
-        let invD = 1.0 / ray.direction.0;
+        let invD = 1.0 / ray.direction.x();
         let mut t0 = (self.min.0 - ray.origin.0) * invD;
         let mut t1 = (self.max.0 - ray.origin.0) * invD;
 
@@ -72,7 +72,7 @@ impl Aabb {
             return false;
         }
 
-        let invD = 1.0 / ray.direction.1;
+        let invD = 1.0 / ray.direction.y();
         let mut t0 = (self.min.1 - ray.origin.1) * invD;
         let mut t1 = (self.max.1 - ray.origin.1) * invD;
 
@@ -87,7 +87,7 @@ impl Aabb {
             return false;
         }
 
-        let invD = 1.0 / ray.direction.2;
+        let invD = 1.0 / ray.direction.z();
         let mut t0 = (self.min.2 - ray.origin.2) * invD;
         let mut t1 = (self.max.2 - ray.origin.2) * invD;
 
@@ -125,7 +125,7 @@ trait Hit {
     fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord>;
     fn bounding_box(&self, t0: f32, t1: f32) -> Option<Aabb>;
 
-    fn pdf_value(&self, o: V3, v: V3) -> f32 {
+    fn pdf_value(&self, o: V3, v: V3U) -> f32 {
         0.0
     }
 
@@ -155,10 +155,10 @@ impl Sphere {
 impl Hit for Sphere {
     fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
-        let a = ray.direction.square_norm();
+        let a = ray.direction.dot(ray.direction);
         let b = oc.dot(ray.direction);
         let c = oc.square_norm() - self.radius * self.radius;
-        let discriminant = b*b - a*c;
+        let discriminant = b * b - a * c;
 
         if discriminant > 0.0 {
             let check = |at| {
@@ -190,7 +190,7 @@ impl Hit for Sphere {
         })
     }
 
-    fn pdf_value(&self, o: V3, v: V3) -> f32 {
+    fn pdf_value(&self, o: V3, v: V3U) -> f32 {
         match self.hit(&Ray { origin: o, direction: v }, 0.001, std::f32::MAX) {
             Some(rec) => {
                 let cos_theta_max = (1.0 - self.radius * self.radius / (self.center - o).square_norm()).sqrt();
@@ -325,12 +325,12 @@ impl Hit for XZRect {
         })
     }
 
-    fn pdf_value(&self, o: V3, v: V3) -> f32 {
+    fn pdf_value(&self, o: V3, v: V3U) -> f32 {
         match self.hit(&Ray { origin: o, direction: v }, 0.001, std::f32::MAX) {
             Some(rec) => {
                 let area = (self.x1 - self.x0) * (self.z1 - self.z0);
-                let distance_squared = rec.at * rec.at * v.square_norm();
-                let cosine = (v.dot(rec.normal) / v.norm()).abs();
+                let distance_squared = rec.at * rec.at;
+                let cosine = v.dot(rec.normal).abs();
                 distance_squared / (cosine * area)
             },
             None => 0.0,
@@ -476,12 +476,16 @@ impl RotateY {
 impl Hit for RotateY {
     fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         let mut origin = ray.origin;
-        let mut direction = ray.direction;
         origin.0 = self.cos_theta * ray.origin.0 - self.sin_theta * ray.origin.2;
         origin.2 = self.sin_theta * ray.origin.0 + self.cos_theta * ray.origin.2;
-        direction.0 = self.cos_theta * ray.direction.0 - self.sin_theta * ray.direction.2;
-        direction.2 = self.sin_theta * ray.direction.0 + self.cos_theta * ray.direction.2;
-        let rotated_r = Ray { origin: origin, direction: direction };
+        let rotated_r = Ray {
+            origin: origin,
+            direction: V3U::new(V3(
+                self.cos_theta * ray.direction.x() - self.sin_theta * ray.direction.z(),
+                ray.direction.y(),
+                self.sin_theta * ray.direction.x() + self.cos_theta * ray.direction.z(),
+            ))
+        };
 
         self.figure.hit(&rotated_r, tmin, tmax).map(|mut rec| {
             let mut point = rec.point;
@@ -525,10 +529,10 @@ impl Hit for ConstantMedium {
                 if rec1.at < 0.0 {
                     rec1.at = 0.0;
                 }
-                let distance_inside_boundary = (rec2.at - rec1.at) * ray.direction.norm();
+                let distance_inside_boundary = rec2.at - rec1.at;
                 let hit_distance = - (1.0 / self.density) * rand::random::<f32>().log(std::f32::consts::E);
                 if hit_distance < distance_inside_boundary {
-                    let at = rec1.at + hit_distance / ray.direction.norm();
+                    let at = rec1.at + hit_distance;
 
                     return Some(HitRecord {
                         at: at,
@@ -761,7 +765,7 @@ impl Figures {
         }
     }
 
-    pub fn pdf_value(&self, o: V3, v: V3) -> f32 {
+    pub fn pdf_value(&self, o: V3, v: V3U) -> f32 {
         match self {
             Figures::Sphere(f) => f.pdf_value(o, v),
             Figures::XYRect(f) => f.pdf_value(o, v),
