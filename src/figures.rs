@@ -2,6 +2,54 @@ use crate::vector::*;
 use crate::materials::*;
 
 #[derive(Clone)]
+pub struct Onb {
+    axis: (V3, V3, V3),
+}
+
+impl Onb {
+    pub fn random_cosine_direction() -> V3 {
+        let r1 = rand::random::<f32>();
+        let r2 = rand::random::<f32>();
+        let z = (1.0 - r2).sqrt();
+        let phi = 2.0 * ::std::f32::consts::PI * r1;
+        let x = phi.cos() * 2.0 * r2.sqrt();
+        let y = phi.sin() * 2.0 * r2.sqrt();
+        V3(x,y,z)
+    }
+
+    pub fn new_from_w(n: &V3) -> Onb {
+        let w = n.normalize();
+        let a = if w.x().abs() > 0.9 {
+            V3(0.0, 1.0, 0.0)
+        } else {
+            V3(1.0, 0.0, 0.0)
+        };
+        let v = w.cross(a).normalize();
+        let u = w.cross(v);
+
+        Onb {
+            axis: (u,v,w),
+        }
+    }
+
+    pub fn local(&self, vec: &V3) -> V3 {
+        self.axis.0.scale(vec.x()) + self.axis.1.scale(vec.y()) + self.axis.2.scale(vec.z())
+    }
+
+    pub fn u(&self) -> V3 {
+        self.axis.0
+    }
+
+    pub fn v(&self) -> V3 {
+        self.axis.1
+    }
+
+    pub fn w(&self) -> V3 {
+        self.axis.2
+    }
+}
+
+#[derive(Clone)]
 pub struct Aabb {
     min: V3,
     max: V3,
@@ -92,6 +140,18 @@ pub struct Sphere {
     radius: f32,
 }
 
+impl Sphere {
+    fn random_to_sphere(radius: f32, distance_squared: f32) -> V3 {
+        let r1 = rand::random::<f32>();
+        let r2 = rand::random::<f32>();
+        let z = 1.0 + r2 * ((1.0 - radius * radius / distance_squared).sqrt() - 1.0);
+        let phi = 2.0 * std::f32::consts::PI;
+        let x = phi.cos() * (1.0 - z * z).sqrt();
+        let y = phi.sin() * (1.0 - z * z).sqrt();
+        V3(x,y,z)
+    }
+}
+
 impl Hit for Sphere {
     fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
@@ -128,6 +188,24 @@ impl Hit for Sphere {
             min: self.center - V3(self.radius, self.radius, self.radius),
             max: self.center + V3(self.radius, self.radius, self.radius),
         })
+    }
+
+    fn pdf_value(&self, o: V3, v: V3) -> f32 {
+        match self.hit(&Ray { origin: o, direction: v }, 0.001, std::f32::MAX) {
+            Some(rec) => {
+                let cos_theta_max = (1.0 - self.radius * self.radius / (self.center - o).square_norm()).sqrt();
+                let solid_angle = 2.0 * std::f32::consts::PI * (1.0 - cos_theta_max);
+                1.0 / solid_angle
+            },
+            None => 0.0,
+        }
+    }
+
+    fn random(&self, o: V3) -> V3 {
+        let direction = self.center - o;
+        let distance_squared = direction.square_norm();
+        let uvw = Onb::new_from_w(&direction);
+        uvw.local(&Sphere::random_to_sphere(self.radius, distance_squared))
     }
 }
 
@@ -695,7 +773,12 @@ impl Figures {
             Figures::RotateY(f) => f.pdf_value(o, v),
             Figures::ConstantMedium(f) => f.pdf_value(o, v),
             Figures::BvhNode(f) => f.pdf_value(o, v),
-            Figures::Figures(fs) => unimplemented!(),
+            Figures::Figures(fs) => {
+                let weight = 1.0 / fs.len() as f32;
+                fs.iter().map(|object| {
+                    weight * object.pdf_value(o, v)
+                }).sum()
+            },
         }
     }
 
@@ -711,128 +794,10 @@ impl Figures {
             Figures::RotateY(f) => f.random(o),
             Figures::ConstantMedium(f) => f.random(o),
             Figures::BvhNode(f) => f.random(o),
-            Figures::Figures(fs) => unimplemented!(),
+            Figures::Figures(fs) => {
+                let index = (rand::random::<f32>() * fs.len() as f32) as usize;
+                fs[index].random(o)
+            },
         }
     }
 }
-
-pub struct OnbPdf {
-    uvw: Onb,
-}
-
-impl OnbPdf {
-    pub fn new(vec: &V3) -> OnbPdf {
-        OnbPdf {
-            uvw: Onb::new_from_w(vec),
-        }
-    }
-
-    pub fn value(&self, direction: &V3) -> f32 {
-        let cosine = direction.normalize().dot(self.uvw.w());
-        if cosine > 0.0 {
-            cosine / std::f32::consts::PI
-        } else {
-            0.0
-        }
-    }
-
-    pub fn generate(&self) -> V3 {
-        self.uvw.local(&Onb::random_cosine_direction())
-    }
-}
-
-pub struct HitPdf {
-    figure: Figures,
-    origin: V3,
-}
-
-impl HitPdf {
-    pub fn new(figure: Figures, origin: V3) -> HitPdf {
-        HitPdf {
-            figure: figure,
-            origin: origin,
-        }
-    }
-
-    pub fn value(&self, direction: V3) -> f32 {
-        self.figure.pdf_value(self.origin, direction)
-    }
-
-    pub fn generate(&self) -> V3 {
-        self.figure.random(self.origin)
-    }
-}
-
-pub struct MixPdf {
-    pdf: (Box<Pdfs>, Box<Pdfs>),
-}
-
-impl MixPdf {
-    pub fn new(p0: Pdfs, p1: Pdfs) -> MixPdf {
-        MixPdf {
-            pdf: (Box::new(p0), Box::new(p1))
-        }
-    }
-
-    pub fn value(&self, direction: V3) -> f32 {
-        0.5 * self.pdf.0.value(direction) + 0.5 * self.pdf.1.value(direction)
-    }
-
-    pub fn generate(&self) -> V3 {
-        if rand::random::<f32>() < 0.5 {
-            self.pdf.0.generate()
-        } else {
-            self.pdf.1.generate()
-        }
-    }
-}
-
-pub struct CosinePdf {
-    uvw: Onb,
-}
-
-impl CosinePdf {
-    pub fn new(w: &V3) -> CosinePdf {
-        CosinePdf {
-            uvw: Onb::new_from_w(w)
-        }
-    }
-
-    pub fn value(&self, direction: V3) -> f32 {
-        let cosine = direction.normalize().dot(self.uvw.w());
-        if cosine > 0.0 {
-            cosine / std::f32::consts::PI
-        } else {
-            0.0
-        }
-    }
-
-    pub fn generate(&self) -> V3 {
-        self.uvw.local(&Onb::random_cosine_direction())
-    }
-}
-
-pub enum Pdfs {
-    MixPdf(MixPdf),
-    CosinePdf(CosinePdf),
-    HitPdf(HitPdf),
-}
-
-impl Pdfs {
-    pub fn value(&self, direction: V3) -> f32 {
-        match self {
-            Pdfs::MixPdf(p) => p.value(direction),
-            Pdfs::CosinePdf(p) => p.value(direction),
-            Pdfs::HitPdf(p) => p.value(direction),
-        }
-    }
-
-    pub fn generate(&self) -> V3 {
-        match self {
-            Pdfs::MixPdf(p) => p.generate(),
-            Pdfs::CosinePdf(p) => p.generate(),
-            Pdfs::HitPdf(p) => p.generate(),
-        }
-    }
-}
-

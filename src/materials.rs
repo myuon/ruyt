@@ -1,5 +1,6 @@
 use crate::vector::*;
 use crate::textures::*;
+use crate::pdf::*;
 
 #[derive(Clone)]
 pub struct HitRecord {
@@ -24,57 +25,10 @@ trait Material {
 
 #[derive(Clone)]
 pub struct ScatterRecord {
-    pub albedo: V3,
-    pub scattered: Ray,
+    pub attenuation: V3,
+    pub specular_ray: Option<Ray>,
+    pub pdf: Option<Pdfs>,
     pub is_scattered: bool,
-    pub pdf: f32,
-}
-
-pub struct Onb {
-    axis: (V3, V3, V3),
-}
-
-impl Onb {
-    pub fn random_cosine_direction() -> V3 {
-        let r1 = rand::random::<f32>();
-        let r2 = rand::random::<f32>();
-        let z = (1.0 - r2).sqrt();
-        let phi = 2.0 * ::std::f32::consts::PI * r1;
-        let x = phi.cos() * 2.0 * r2.sqrt();
-        let y = phi.sin() * 2.0 * r2.sqrt();
-        V3(x,y,z)
-    }
-
-    pub fn new_from_w(n: &V3) -> Onb {
-        let w = n.normalize();
-        let a = if w.x().abs() > 0.9 {
-            V3(0.0, 1.0, 0.0)
-        } else {
-            V3(1.0, 0.0, 0.0)
-        };
-        let v = w.cross(a).normalize();
-        let u = w.cross(v);
-
-        Onb {
-            axis: (u,v,w),
-        }
-    }
-
-    pub fn local(&self, vec: &V3) -> V3 {
-        self.axis.0.scale(vec.x()) + self.axis.1.scale(vec.y()) + self.axis.2.scale(vec.z())
-    }
-
-    pub fn u(&self) -> V3 {
-        self.axis.0
-    }
-
-    pub fn v(&self) -> V3 {
-        self.axis.1
-    }
-
-    pub fn w(&self) -> V3 {
-        self.axis.2
-    }
 }
 
 pub struct Lambertian {
@@ -83,19 +37,11 @@ pub struct Lambertian {
 
 impl Material for Lambertian {
     fn scatter(&self, _ray_in: &Ray, rec: &HitRecord) -> ScatterRecord {
-        let uvw = Onb::new_from_w(&rec.normal);
-        let direction = uvw.local(&Onb::random_cosine_direction());
-        let scattered = Ray {
-            origin: rec.point,
-            direction: direction.normalize(),
-        };
-        let pdf = uvw.axis.2.dot(scattered.direction) / ::std::f32::consts::PI;
-
         ScatterRecord {
-            albedo: self.albedo.value(rec.u, rec.v, &rec.point),
-            scattered: scattered,
+            attenuation: self.albedo.value(rec.u, rec.v, &rec.point),
+            specular_ray: None,
+            pdf: Some(Pdfs::CosinePdf(CosinePdf::new(&rec.normal))),
             is_scattered: true,
-            pdf: pdf,
         }
     }
 
@@ -119,17 +65,16 @@ impl Metal {
 impl Material for Metal {
     fn scatter(&self, ray_in: &Ray, rec: &HitRecord) -> ScatterRecord {
         let reflected = Metal::reflect(&ray_in.direction.normalize(), &rec.normal);
-        let ray = Ray {
+        let specular_ray = Ray {
             origin: rec.point,
             direction: reflected + V3::new_in_unit_sphere().scale(self.fuzz),
         };
-        let is_scattered = ray.direction.dot(rec.normal) > 0.0;
 
         ScatterRecord {
-            albedo: self.albedo,
-            scattered: ray,
-            is_scattered: is_scattered,
-            pdf: 1.0,
+            attenuation: self.albedo,
+            specular_ray: Some(specular_ray),
+            pdf: None,
+            is_scattered: true,
         }
     }
 }
@@ -177,17 +122,17 @@ impl Material for Dielectric {
             let reflect_prob = self.schlick(cosine);
 
             ScatterRecord {
-                albedo: V3(1.0, 1.0, 1.0),
-                scattered: Ray { origin: rec.point, direction: if rand::random::<f32>() < reflect_prob { reflected } else { refracted } },
+                attenuation: V3(1.0, 1.0, 1.0),
+                specular_ray: Some(Ray { origin: rec.point, direction: if rand::random::<f32>() < reflect_prob { reflected } else { refracted } }),
                 is_scattered: true,
-                pdf: 1.0,
+                pdf: None,
             }
         } else {
             ScatterRecord {
-                albedo: V3(1.0, 1.0, 1.0),
-                scattered: Ray { origin: rec.point, direction: reflected },
+                attenuation: V3(1.0, 1.0, 1.0),
+                specular_ray: Some(Ray { origin: rec.point, direction: reflected }),
                 is_scattered: true,
-                pdf: 1.0,
+                pdf: None,
             }
         }
     }
@@ -200,10 +145,10 @@ struct DiffuseLight {
 impl Material for DiffuseLight {
     fn scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> ScatterRecord {
         ScatterRecord {
-            albedo: V3(0.0, 0.0, 0.0),
-            scattered: Ray { origin: V3(0.0, 0.0, 0.0), direction: V3(0.0, 0.0, 0.0) },
+            attenuation: V3(0.0, 0.0, 0.0),
+            specular_ray: Some(Ray { origin: V3(0.0, 0.0, 0.0), direction: V3(0.0, 0.0, 0.0) }),
             is_scattered: false,
-            pdf: 1.0,
+            pdf: None,
         }
     }
 

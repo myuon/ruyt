@@ -10,6 +10,9 @@ use crate::figures::*;
 mod textures;
 use crate::textures::*;
 
+mod pdf;
+use crate::pdf::*;
+
 mod materials;
 use crate::materials::*;
 
@@ -91,23 +94,29 @@ impl Scene {
         record
     }
 
-    pub fn color(&self, ray: Ray, depth: i32) -> V3 {
+    pub fn color(&self, ray: Ray, light_shape: Figures, depth: i32) -> V3 {
         match self.hit(&ray, 0.001, std::f32::MAX) {
             Some((rec, object)) => {
-                let sc = object.material.scatter(&ray, &rec);
+                let scatter_rec = object.material.scatter(&ray, &rec);
                 let emitted = object.material.emitted(rec.u, rec.v, &rec.point);
-                if depth < 50 && sc.is_scattered {
-                    let light_shape = Figures::xz_rect(213.0, 343.0, 227.0, 332.0, 554.0);
-                    let p0 = HitPdf::new(light_shape, rec.point);
-                    let p1 = CosinePdf::new(&rec.normal);
-                    let p = MixPdf::new(Pdfs::HitPdf(p0), Pdfs::CosinePdf(p1));
-                    let scattered = Ray {
-                        origin: rec.point,
-                        direction: p.generate(),
-                    };
-                    let pdf_val = p.value(scattered.direction);
-                    
-                    emitted + (sc.albedo.scale(object.material.scattering_pdf(&ray, &rec, &scattered)) * self.color(scattered, depth + 1)).scale(1.0 / pdf_val)
+                if depth < 50 && scatter_rec.is_scattered {
+                    match scatter_rec.specular_ray {
+                        Some(specular_ray) => {
+                            scatter_rec.attenuation * self.color(specular_ray, light_shape, depth + 1)
+                        },
+                        None => {
+                            let light_clone = light_shape.clone();
+                            let plight = HitPdf::new(light_shape, rec.point);
+                            let p = MixPdf::new(Pdfs::HitPdf(plight), scatter_rec.pdf.unwrap());
+                            let scattered = Ray {
+                                origin: rec.point,
+                                direction: p.generate(),
+                            };
+                            let pdf_val = p.value(scattered.direction);
+                            
+                            emitted + (scatter_rec.attenuation.scale(object.material.scattering_pdf(&ray, &rec, &scattered)) * self.color(scattered, light_clone, depth + 1)).scale(1.0 / pdf_val)
+                        },
+                    }
                 } else {
                     emitted
                 }
@@ -415,10 +424,19 @@ fn create_cornell_box() -> Scene {
         }
     );
 
+    /*
     objects.push(
         Objects {
             figure: Figures::translate(V3(130.0, 0.0, 65.0), Figures::rotate_y(-18.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 165.0, 165.0)))),
             material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+        }
+    );
+    */
+
+    objects.push(
+        Objects {
+            figure: Figures::sphere(V3(190.0, 90.0, 190.0), 90.0),
+            material: Materials::dielectric(1.5),
         }
     );
 
@@ -437,7 +455,7 @@ fn create_cornell_box() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 1000;
+    let ns = 100;
 
     let lookfrom = V3(278.0, 278.0, -800.0);
     let lookat = V3(238.0, 278.0, 0.0);
@@ -455,7 +473,9 @@ fn main() {
                 let v = ((h - 1 - j) as f32 + rand::random::<f32>()) / h as f32;
                 let ray = camera.get_ray(u,v);
 
-                scene.color(ray, 0)
+                let light_shape = Figures::xz_rect(213.0, 343.0, 227.0, 332.0, 554.0);
+                let grass_sphere = Figures::sphere(V3(190.0, 90.0, 190.0), 90.0);
+                scene.color(ray, Figures::Figures(vec![ light_shape, grass_sphere ]), 0)
             }).sum::<V3>().scale(1.0 / ns as f32).map(&|x| x.sqrt());
 
             Color::from_v3(c)
