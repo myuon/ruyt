@@ -329,9 +329,8 @@ impl Hit for XZRect {
         match self.hit(&Ray { origin: o, direction: v }, 0.001, std::f32::MAX) {
             Some(rec) => {
                 let area = (self.x1 - self.x0) * (self.z1 - self.z0);
-                let distance_squared = rec.at * rec.at;
                 let cosine = v.dot(rec.normal).abs();
-                distance_squared / (cosine * area)
+                rec.at * rec.at / (cosine * area)
             },
             None => 0.0,
         }
