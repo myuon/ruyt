@@ -30,12 +30,12 @@ pub struct ScatterRecord {
     pub pdf: f32,
 }
 
-struct Onb {
+pub struct Onb {
     axis: (V3, V3, V3),
 }
 
 impl Onb {
-    fn random_cosine_direction() -> V3 {
+    pub fn random_cosine_direction() -> V3 {
         let r1 = rand::random::<f32>();
         let r2 = rand::random::<f32>();
         let z = (1.0 - r2).sqrt();
@@ -45,7 +45,7 @@ impl Onb {
         V3(x,y,z)
     }
 
-    fn new_from_w(n: &V3) -> Onb {
+    pub fn new_from_w(n: &V3) -> Onb {
         let w = n.normalize();
         let a = if w.x().abs() > 0.9 {
             V3(0.0, 1.0, 0.0)
@@ -60,8 +60,20 @@ impl Onb {
         }
     }
 
-    fn local(&self, vec: &V3) -> V3 {
+    pub fn local(&self, vec: &V3) -> V3 {
         self.axis.0.scale(vec.x()) + self.axis.1.scale(vec.y()) + self.axis.2.scale(vec.z())
+    }
+
+    pub fn u(&self) -> V3 {
+        self.axis.0
+    }
+
+    pub fn v(&self) -> V3 {
+        self.axis.1
+    }
+
+    pub fn w(&self) -> V3 {
+        self.axis.2
     }
 }
 

@@ -72,6 +72,31 @@ impl Renderer {
     }
 }
 
+struct Pdf {
+    uvw: Onb,
+}
+
+impl Pdf {
+    fn new(vec: &V3) -> Pdf {
+        Pdf {
+            uvw: Onb::new_from_w(vec),
+        }
+    }
+
+    fn value(&self, direction: &V3) -> f32 {
+        let cosine = direction.normalize().dot(self.uvw.w());
+        if cosine > 0.0 {
+            cosine / std::f32::consts::PI
+        } else {
+            0.0
+        }
+    }
+
+    fn generate(&self) -> V3 {
+        self.uvw.local(&Onb::random_cosine_direction())
+    }
+}
+
 struct Scene {
     objects: Vec<Objects>,
 }
@@ -97,7 +122,14 @@ impl Scene {
                 let sc = object.material.scatter(&ray, &rec);
                 let emitted = object.material.emitted(rec.u, rec.v, &rec.point);
                 if depth < 50 && sc.is_scattered {
-                    emitted + (sc.albedo.scale(object.material.scattering_pdf(&ray, &rec, &sc.scattered)) * self.color(sc.scattered, depth + 1)).scale(1.0 / sc.pdf)
+                    let pdf = Pdf::new(&rec.normal);
+                    let scattered = Ray {
+                        origin: rec.point,
+                        direction: pdf.generate(),
+                    };
+                    let pdf_val = pdf.value(&scattered.direction);
+                    
+                    emitted + (sc.albedo.scale(object.material.scattering_pdf(&ray, &rec, &scattered)) * self.color(scattered, depth + 1)).scale(1.0 / pdf_val)
                 } else {
                     emitted
                 }
