@@ -378,19 +378,83 @@ fn create_nextweek_scene() -> Scene {
     }
 }
 
+fn create_cornell_box() -> Scene {
+    let mut objects = vec![];
+
+    objects.push(
+        Objects {
+            figure: Figures::yz_rect(0.0, 555.0, 0.0, 555.0, 555.0),
+            material: Materials::lambertian(Textures::solid(V3(0.12, 0.45, 0.15))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::yz_rect(0.0, 555.0, 0.0, 555.0, 0.0),
+            material: Materials::lambertian(Textures::solid(V3(0.65, 0.05, 0.05))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::xz_rect(213.0, 343.0, 227.0, 332.0, 554.0),
+            material: Materials::diffuse_light(Textures::solid(V3(15.0, 15.0, 15.0))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::xz_rect(0.0, 555.0, 0.0, 555.0, 555.0),
+            material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::xz_rect(0.0, 555.0, 0.0, 555.0, 0.0),
+            material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::flip_normals(Figures::xy_rect(0.0, 555.0, 0.0, 555.0, 555.0)),
+            material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::translate(V3(130.0, 0.0, 65.0), Figures::rotate_y(-18.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 165.0, 165.0)))),
+            material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+        }
+    );
+
+    objects.push(
+        Objects {
+            figure: Figures::translate(V3(265.0, 0.0, 295.0), Figures::rotate_y(15.0, Figures::cuboid(V3(0.0, 0.0, 0.0), V3(165.0, 330.0, 165.0)))),
+            material: Materials::lambertian(Textures::solid(V3(0.73, 0.73, 0.73))),
+        }
+    );
+
+    Scene {
+        objects: objects,
+    }
+}
+
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 10000;
+    let ns = 100;
 
-    let lookfrom = V3(278.0, 278.0, -400.0);
+    let lookfrom = V3(278.0, 278.0, -800.0);
     let lookat = V3(238.0, 278.0, 0.0);
     let dist_to_focus = 10.0;
     let apertune = 0.0;
     let vfov = 40.0;
 
     let camera = Camera::new(lookfrom, lookat, V3(0.0, 1.0, 0.0), vfov, w as f32 / h as f32, apertune, dist_to_focus);
-    let scene = create_nextweek_scene();
+    let scene = create_cornell_box();
 
     let renderer = Renderer {
         renderer: Box::new(move |i,j| {
