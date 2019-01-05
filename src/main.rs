@@ -455,7 +455,7 @@ fn create_cornell_box() -> Scene {
 fn main() {
     let w = 400;
     let h = 250;
-    let ns = 100;
+    let ns = 1000;
 
     let lookfrom = V3(278.0, 278.0, -800.0);
     let lookat = V3(238.0, 278.0, 0.0);
@@ -480,7 +480,7 @@ fn main() {
 
                 let light_shape = Figures::xz_rect(213.0, 343.0, 227.0, 332.0, 554.0);
                 let grass_sphere = Figures::sphere(V3(190.0, 90.0, 190.0), 90.0);
-                scene.color(ray, Figures::Figures(vec![ light_shape, grass_sphere ]), 0)
+                de_nan(scene.color(ray, Figures::Figures(vec![ light_shape, grass_sphere ]), 0))
             }).sum::<V3>().scale(1.0 / ns as f32).map(&|x| x.sqrt());
 
             Color::from_v3(c)

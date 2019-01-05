@@ -11,9 +11,9 @@ impl Onb {
         let r1 = rand::random::<f32>();
         let r2 = rand::random::<f32>();
         let z = (1.0 - r2).sqrt();
-        let phi = 2.0 * ::std::f32::consts::PI * r1;
-        let x = phi.cos() * 2.0 * r2.sqrt();
-        let y = phi.sin() * 2.0 * r2.sqrt();
+        let phi = 2.0 * std::f32::consts::PI * r1;
+        let x = phi.cos() * r2.sqrt();
+        let y = phi.sin() * r2.sqrt();
         V3(x,y,z)
     }
 
@@ -194,7 +194,7 @@ impl Hit for Sphere {
         match self.hit(&Ray { origin: o, direction: v }, 0.001, std::f32::MAX) {
             Some(rec) => {
                 let cos_theta_max = (1.0 - self.radius * self.radius / (self.center - o).square_norm()).sqrt();
-                let solid_angle = 2.0 * std::f32::consts::PI * (1.0 - cos_theta_max);
+                let solid_angle = 2.0 * std::f32::consts::PI * (1.0 - cos_theta_max * cos_theta_max);
                 1.0 / solid_angle
             },
             None => 0.0,

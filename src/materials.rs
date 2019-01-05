@@ -47,7 +47,7 @@ impl Material for Lambertian {
 
     fn scattering_pdf(&self, ray_in: &Ray, hit_record: &HitRecord, scattered: &Ray) -> f32 {
         let cosine = hit_record.normal.dot(scattered.direction);
-        if cosine < 0.0 { 0.0 } else { cosine / ::std::f32::consts::PI }
+        if cosine < 0.0 { 0.0 } else { cosine / std::f32::consts::PI }
     }
 }
 
